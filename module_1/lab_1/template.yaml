@@ -13,7 +13,7 @@ Resources:
       GenerateSecretString:
         SecretStringTemplate: '{"username": "iam-users"}'
         GenerateStringKey: "password"
-        PasswordLength: 12
+        PasswordLength: 8
         ExcludePunctuation: true
 
   # ===============
