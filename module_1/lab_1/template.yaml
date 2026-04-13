@@ -2,7 +2,10 @@ AWSTemplateFormatVersion: "2010-09-09"
 Description: IAM automation lab with users, groups, and secrets manager password
 
 Resources:
-  # Random secret password for the user
+
+# ================
+# SECRETS MANAGER
+# ================
   IAMSecretpassword:
     Type: "AWS::SecretsManager::Secret"
     Properties:
