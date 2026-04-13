@@ -13,8 +13,9 @@ Resources:
       GenerateSecretString:
         SecretStringTemplate: '{"username": "iam-users"}'
         GenerateStringKey: "password"
-        PasswordLength: 8
-        ExcludePunctuation: true
+        PasswordLength: 12
+        ExcludePunctuation: false
+        RequireEachIncludedType: true
 
   # ===============
   # IAM GROUPS
@@ -48,6 +49,12 @@ Resources:
               - "ec2:DescribeInstances"
               - "ec2:RunInstances"
             Resource: "*"
+          # ✅ Allow EC2 group users to change their own password
+          - Effect: "Allow"
+            Action:
+              - "iam:ChangePassword"
+              - "iam:GetAccountPasswordPolicy"
+            Resource: "arn:aws:iam::*:user/${aws:username}"
 
   S3Policy:
     Type: "AWS::IAM::Policy"
@@ -63,6 +70,12 @@ Resources:
               - "s3:ListBucket"
               - "s3:ListAllMyBuckets"
             Resource: "*"
+          # ✅ Allow S3 group users to change their own password
+          - Effect: "Allow"
+            Action:
+              - "iam:ChangePassword"
+              - "iam:GetAccountPasswordPolicy"
+            Resource: "arn:aws:iam::*:user/${aws:username}"
 
   # ================
   # IAM USERS
