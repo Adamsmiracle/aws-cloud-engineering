@@ -133,3 +133,4 @@ Outputs:
   ConsoleLoginURL:
     Description: "AWS Console sign-in URL"
     Value: !Sub "https://${AWS::AccountId}.signin.aws.amazon.com/console"
+    
