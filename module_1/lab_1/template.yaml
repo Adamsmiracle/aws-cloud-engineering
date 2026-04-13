@@ -1,50 +1,45 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: IAM automation lab with users, groups, and secrets manager password
+Description: GitSync-compatible IAM automation lab with users, groups, and a shared temporary password
 
 Resources:
 
-# ================
-# SECRETS MANAGER
-# ================
+  # ================
+  # SECRETS MANAGER
+  # ================
   IAMSecretpassword:
     Type: "AWS::SecretsManager::Secret"
     Properties:
       Name: "IAMLabTemporaryPassword"
       GenerateSecretString:
+        SecretStringTemplate: '{"username": "iam-users"}'
+        GenerateStringKey: "password"
         PasswordLength: 12
         ExcludePunctuation: true
 
   # ===============
   # IAM GROUPS
-  # ==============
+  # ===============
 
-  # EC2 Group
   EC2Group:
     Type: "AWS::IAM::Group"
     Properties:
       GroupName: "EC2Group"
 
-
-# S3 Group
   S3Group:
     Type: "AWS::IAM::Group"
     Properties:
       GroupName: "S3Group"
-  
-
 
   # ================
-  # Group Policies
+  # GROUP POLICIES
   # ================
 
-
-# EC2 Group Policy
   EC2Policy:
     Type: "AWS::IAM::Policy"
     Properties:
       PolicyName: "EC2GroupPolicy"
       Groups:
-        - "EC2Group"
+        - !Ref EC2Group
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -54,14 +49,12 @@ Resources:
               - "ec2:RunInstances"
             Resource: "*"
 
-
-# S3 Group Policy
   S3Policy:
     Type: "AWS::IAM::Policy"
     Properties:
       PolicyName: "S3GroupPolicy"
       Groups:
-        - "S3Group"
+        - !Ref S3Group
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -71,50 +64,59 @@ Resources:
               - "s3:ListAllMyBuckets"
             Resource: "*"
 
+  # ================
+  # IAM USERS
+  # ================
 
-# ================
-# IAM USERS
-# ================
-
-
-# EC2 User
   EC2User1:
     Type: "AWS::IAM::User"
+    DependsOn: IAMSecretpassword
     Properties:
-      UserName: "EC2User"
+      UserName: "ec2-user1"
       Groups:
-        - "EC2Group"
+        - !Ref EC2Group
       LoginProfile:
-        Password: "{{resolve:secretsmanager:IAMLabTemporaryPassword:SecretString}}"
+        Password: "{{resolve:secretsmanager:IAMLabTemporaryPassword:SecretString:password}}"
         PasswordResetRequired: true
 
-
-# EC2 User 2
   EC2User2:
     Type: "AWS::IAM::User"
+    DependsOn: IAMSecretpassword
     Properties:
-      UserName: "EC2User2"
+      UserName: "ec2-user2"
       Groups:
-        - "EC2Group"
+        - !Ref EC2Group
+      Policies:
+        - PolicyName: "EC2User2LaunchPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "ec2:RunInstances"
+                  - "ec2:Describe*"
+                  - "ec2:CreateTags"
+                Resource: "*"
       LoginProfile:
-        Password: "{{resolve:secretsmanager:IAMLabTemporaryPassword:SecretString}}"
+        Password: "{{resolve:secretsmanager:IAMLabTemporaryPassword:SecretString:password}}"
         PasswordResetRequired: true
 
-  # S3 User
-  S3User1:
+  S3User:
     Type: "AWS::IAM::User"
+    DependsOn: IAMSecretpassword
     Properties:
-      UserName: "S3User1"
+      UserName: "s3-user"
       Groups:
-        - "S3Group"
+        - !Ref S3Group
       LoginProfile:
-        Password: "{{resolve:secretsmanager:IAMLabTemporaryPassword:SecretString}}"
+        Password: "{{resolve:secretsmanager:IAMLabTemporaryPassword:SecretString:password}}"
         PasswordResetRequired: true
-
-
 
 Outputs:
   SecretArn:
     Description: "ARN of the generated secret password"
-    Value:
-      Ref IAMSecretpassword
+    Value: !Ref IAMSecretpassword
+
+  ConsoleLoginURL:
+    Description: "AWS Console sign-in URL"
+    Value: !Sub "https://${AWS::AccountId}.signin.aws.amazon.com/console"
