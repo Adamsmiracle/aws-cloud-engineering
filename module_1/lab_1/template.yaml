@@ -109,6 +109,15 @@ Resources:
                   - "ec2:RunInstances"
                   - "ec2:Describe*"
                   - "ec2:CreateTags"
+                  - "ec2:DescribeKeyPairs"
+                  - "ec2:RunInstances"
+                  - "ec2:DescribeImages"
+                  - "ec2:DescribeInstances"
+                  - "ec2:DescribeSubnets"
+                  - "ec2:DescribeSecurityGroups"
+                  - "ec2:CreateSecurityGroup"
+                  - "ec2:AuthorizeSecurityGroupIngress"
+                  - "ec2:CreateTags"
                 Resource: "*"
       LoginProfile:
         Password: "{{resolve:secretsmanager:IAMLabTemporaryPassword:SecretString:password}}"
@@ -133,4 +142,3 @@ Outputs:
   ConsoleLoginURL:
     Description: "AWS Console sign-in URL"
     Value: !Sub "https://${AWS::AccountId}.signin.aws.amazon.com/console"
-    
