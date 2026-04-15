@@ -115,7 +115,7 @@ Resources:
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
-              - Effect: "deny"
+              - Effect: "Deny"
                 Action:
                   - "ec2:RunInstances"
                 Resource: "*"
