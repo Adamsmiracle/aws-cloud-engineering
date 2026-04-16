@@ -56,6 +56,41 @@ Resources:
               - "iam:GetAccountPasswordPolicy"
             Resource: "arn:aws:iam::*:user/${aws:username}"
 
+  # EC2ReadOnlyPolicy:
+  #   Type: "AWS::IAM::Policy"
+  #   Properties:
+  #     PolicyName: "EC2ReadOnlyGroupPolicy"
+  #     Groups:
+  #       - !Ref EC2ReadOnlyGroup
+  #     PolicyDocument:
+  #       Version: "2012-10-17"
+  #       Statement:
+  #         - Effect: "Allow"
+  #           Action:
+  #             - "ec2:Describe*"
+  #           Resource: "*"
+  #         - Effect: "Allow"
+  #           Action:
+  #             - "iam:ChangePassword"
+  #             - "iam:GetAccountPasswordPolicy"
+  #           Resource: "arn:aws:iam::*:user/${aws:username}"
+
+
+  EC2PermissionBoundary:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties:
+      ManagedPolicyName: "EC2PermissionBoundary"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action:
+              - "ec2:Describe*"
+              - "iam:ChangePassword"
+              - "iam:GetAccountPasswordPolicy"
+            Resource: "*"
+
+
   S3Policy:
     Type: "AWS::IAM::Policy"
     Properties:
@@ -92,18 +127,6 @@ Resources:
         PasswordResetRequired: true
 
 
-  # EC2User77:
-  #   Type: "AWS::IAM::User"
-  #   DependsOn: IAMSecretpassword
-  #   Properties:
-  #     UserName: "ec2-user77"
-  #     Groups:
-  #       - !Ref EC2Group
-  #     LoginProfile:
-  #       Password: "{{resolve:secretsmanager:IAMLabTemporaryPassword:SecretString:password}}"
-  #       PasswordResetRequired: true
-
-
   EC2User2:
     Type: "AWS::IAM::User"
     DependsOn: IAMSecretpassword
@@ -111,15 +134,7 @@ Resources:
       UserName: "ec2-user2"
       Groups:
         - !Ref EC2Group
-      Policies:
-        - PolicyName: "EC2User2LaunchPolicy"
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: "Deny"
-                Action:
-                  - "ec2:RunInstances"
-                Resource: "*"
+      PermissionsBoundary: !Ref EC2PermissionBoundary
       LoginProfile:
         Password: "{{resolve:secretsmanager:IAMLabTemporaryPassword:SecretString:password}}"
         PasswordResetRequired: true
@@ -135,6 +150,7 @@ Resources:
       LoginProfile:
         Password: "{{resolve:secretsmanager:IAMLabTemporaryPassword:SecretString:password}}"
         PasswordResetRequired: true
+
 
 Outputs:
   SecretArn:
