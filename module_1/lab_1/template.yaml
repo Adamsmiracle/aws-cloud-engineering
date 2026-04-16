@@ -91,6 +91,7 @@ Resources:
             Resource: "*"
 
 
+
   S3Policy:
     Type: "AWS::IAM::Policy"
     Properties:
