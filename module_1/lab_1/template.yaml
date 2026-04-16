@@ -92,16 +92,16 @@ Resources:
         PasswordResetRequired: true
 
 
-  EC2User77:
-    Type: "AWS::IAM::User"
-    DependsOn: IAMSecretpassword
-    Properties:
-      UserName: "ec2-user77"
-      Groups:
-        - !Ref EC2Group
-      LoginProfile:
-        Password: "{{resolve:secretsmanager:IAMLabTemporaryPassword:SecretString:password}}"
-        PasswordResetRequired: true
+  # EC2User77:
+  #   Type: "AWS::IAM::User"
+  #   DependsOn: IAMSecretpassword
+  #   Properties:
+  #     UserName: "ec2-user77"
+  #     Groups:
+  #       - !Ref EC2Group
+  #     LoginProfile:
+  #       Password: "{{resolve:secretsmanager:IAMLabTemporaryPassword:SecretString:password}}"
+  #       PasswordResetRequired: true
 
 
   EC2User2:
