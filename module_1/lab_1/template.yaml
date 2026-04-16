@@ -103,6 +103,7 @@ Resources:
         Password: "{{resolve:secretsmanager:IAMLabTemporaryPassword:SecretString:password}}"
         PasswordResetRequired: true
 
+
   EC2User2:
     Type: "AWS::IAM::User"
     DependsOn: IAMSecretpassword
