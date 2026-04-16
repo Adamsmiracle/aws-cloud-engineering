@@ -53,7 +53,7 @@ Resources:
             Action:
               - "iam:ChangePassword"
               - "iam:GetAccountPasswordPolicy"
-            Resource: !Sub "arn:aws:iam::${AWS::AccountId}:user/$${aws:username}"
+            Resource: "arn:aws:iam::*:user/${aws:username}"
 
   # ================
   # SERVICE-SPECIFIC POLICIES
