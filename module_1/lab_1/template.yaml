@@ -58,7 +58,7 @@ Resources:
   # ================
   # SERVICE-SPECIFIC POLICIES
   # ================
-  EC2FullAccessPolicy:
+  EC2FullAccessManagedPolicy:
     Type: "AWS::IAM::ManagedPolicy"
     Properties:
       ManagedPolicyName: "EC2FullAccessPolicy"
@@ -73,7 +73,7 @@ Resources:
               - "ec2:Describe*"
             Resource: "*"
 
-  EC2ReadOnlyPolicy:
+  EC2ReadOnlyManagedPolicy:
     Type: "AWS::IAM::ManagedPolicy"
     Properties:
       ManagedPolicyName: "EC2ReadOnlyPolicy"
@@ -87,7 +87,7 @@ Resources:
               - "ec2:Describe*"
             Resource: "*"
 
-  S3Policy:
+  S3ManagedPolicy:
     Type: "AWS::IAM::ManagedPolicy"
     Properties:
       ManagedPolicyName: "S3GroupPolicy"
