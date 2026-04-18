@@ -25,11 +25,6 @@ Resources:
     Properties:
       GroupName: "EC2FullAccessGroup"
 
-  EC2ReadOnlyGroup:
-    Type: "AWS::IAM::Group"
-    Properties:
-      GroupName: "EC2ReadOnlyGroup"
-
   S3Group:
     Type: "AWS::IAM::Group"
     Properties:
@@ -44,7 +39,6 @@ Resources:
       ManagedPolicyName: "ChangePasswordPolicy"
       Groups:
         - !Ref EC2FullAccessGroup
-        - !Ref EC2ReadOnlyGroup
         - !Ref S3Group
       PolicyDocument:
         Version: "2012-10-17"
@@ -73,17 +67,16 @@ Resources:
               - "ec2:Describe*"
             Resource: "*"
 
-  EC2ReadOnlyManagedPolicy:
+  EC2NoRunInstancesBoundary:
     Type: "AWS::IAM::ManagedPolicy"
     Properties:
-      ManagedPolicyName: "EC2ReadOnlyPolicy"
-      Groups:
-        - !Ref EC2ReadOnlyGroup
+      ManagedPolicyName: "EC2NoRunInstancesBoundary"
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
-          - Effect: "Allow"
-            Action:
+          - Sid: "AllowIdentityPermissionsByDefault"
+            Effect: "Allow"
+            Action: 
               - "ec2:Describe*"
             Resource: "*"
 
@@ -122,7 +115,8 @@ Resources:
     Properties:
       UserName: "ec2-user2"
       Groups:
-        - !Ref EC2ReadOnlyGroup
+        - !Ref EC2FullAccessGroup
+      PermissionsBoundary: !Ref EC2NoRunInstancesBoundary
       LoginProfile:
         Password: "{{resolve:secretsmanager:IAMLabTemporaryPassword:SecretString:password}}"
         PasswordResetRequired: true
