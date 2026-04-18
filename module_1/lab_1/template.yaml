@@ -65,6 +65,9 @@ Resources:
             Action:
               - "ec2:RunInstances"
               - "ec2:Describe*"
+              - "ec2:CreateSecurityGroup"
+              - "ec2:CreateKeyPair"
+              - "ec2:CreateTags"
             Resource: "*"
 
   EC2NoRunInstancesBoundary:
