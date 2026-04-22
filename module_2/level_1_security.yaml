@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "Tighten your IAM Permissions - Fixed Version"
+Description: "Tighten your IAM Permissions - Working Version"
 
 Parameters:
   EnvironmentName:
@@ -9,7 +9,7 @@ Parameters:
 
 Resources:
   # ======================
-  # Security Group (Fixed)
+  # Security Group
   # ======================
   Level1SecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -26,7 +26,7 @@ Resources:
           Value: !Ref EnvironmentName
 
   # ======================
-  # IAM Roles (Fixed - No Custom Names)
+  # IAM Roles (No Custom Names)
   # ======================
   EC2S3ReadRole:
     Type: AWS::IAM::Role
@@ -114,12 +114,12 @@ Resources:
           Value: !Ref EnvironmentName
 
   # ======================
-  # EC2 Instance (Fixed AMI)
+  # EC2 Instance
   # ======================
   MyEc2Instance:
     Type: AWS::EC2::Instance
     Properties:
-      ImageId: ami-0c02fb55956c7d316  # Amazon Linux 2023 AMI (us-east-1)
+      ImageId: !Sub "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2}}"
       InstanceType: t3.micro
       IamInstanceProfile: !Ref EC2InstanceProfile
       SecurityGroupIds:
@@ -136,7 +136,7 @@ Resources:
           Value: !Ref EnvironmentName
 
   # ======================
-  # Lambda Function (Fixed)
+  # Lambda Function
   # ======================
   MyLambdaFunction:
     Type: AWS::Lambda::Function
@@ -160,7 +160,7 @@ Resources:
           Value: !Ref EnvironmentName
 
   # ======================
-  # KMS Key (Fixed)
+  # KMS Key
   # ======================
   ProductionKMSKey:
     Type: AWS::KMS::Key
@@ -179,7 +179,7 @@ Resources:
               AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
             Action: "kms:*"
             Resource: "*"
-          - Sid: Allow use of the key for encryption
+          - Sid: Allow use of the key
             Effect: Allow
             Principal:
               AWS:
@@ -192,16 +192,6 @@ Resources:
               - kms:GenerateDataKey*
               - kms:DescribeKey
             Resource: "*"
-          - Sid: Allow attachment of persistent resources
-            Effect: Allow
-            Principal:
-              AWS:
-                - !GetAtt KeyAdminRole.Arn
-            Action:
-              - kms:CreateGrant
-              - kms:ListGrants
-              - kms:RevokeGrant
-            Resource: "*"
       Tags:
         - Key: Environment
           Value: !Ref EnvironmentName
@@ -213,7 +203,7 @@ Resources:
       TargetKeyId: !Ref ProductionKMSKey
 
   # ======================
-  # SSM Parameter (Fixed)
+  # SSM Parameter
   # ======================
   ProductionDatabaseKeyParams:
     Type: AWS::SSM::Parameter
@@ -227,7 +217,7 @@ Resources:
         Environment: !Ref EnvironmentName
 
   # ======================
-  # Secrets Manager (Fixed)
+  # Secrets Manager
   # ======================
   ProductionAppSecret:
     Type: AWS::SecretsManager::Secret
@@ -268,8 +258,6 @@ Outputs:
     Value: !Ref ProductionKMSKey
     Export:
       Name: !Sub "${AWS::StackName}-KMSKey"
-
-
 
 
 
