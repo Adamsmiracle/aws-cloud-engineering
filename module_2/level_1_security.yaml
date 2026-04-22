@@ -243,7 +243,7 @@ Resources:
       KmsKeyId: !Ref ProductionKMSKey
       SecretString: !Sub |
         {
-          "MyPassword": "demo-password-change-me",
+          "MyPassword": "demo-password-change-me"
         }
       Tags:
         - Key: Environment
