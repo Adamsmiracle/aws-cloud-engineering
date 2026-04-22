@@ -169,7 +169,6 @@ Resources:
       EnableKeyRotation: true
       KeySpec: SYMMETRIC_DEFAULT
       KeyUsage: ENCRYPT_DECRYPT
-      PendingWindowInDays: 30
       KeyPolicy:
         Version: "2012-10-17"
         Statement:
