@@ -15,7 +15,6 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Security group for Level 1 Security Lab
-      VpcId: !Ref AWS::NoValue  # Added VpcId - required for security groups
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
@@ -49,7 +48,7 @@ Resources:
     Type: AWS::EC2::Instance
     DependsOn: EC2InstanceProfile
     Properties:
-      ImageId: !Sub "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64}}"  # Fixed SSM parameter path
+      ImageId: !Sub "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64}}"
       InstanceType: t3.micro
       IamInstanceProfile: !Ref EC2InstanceProfile
       SecurityGroupIds:
@@ -76,13 +75,15 @@ Resources:
   MyLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
-      Runtime: python3.12  # Updated to supported runtime version
+      Runtime: python3.12
       Role: !GetAtt LambdaS3ReadRole.Arn
       Handler: index.handler
+      Timeout: 30
+      MemorySize: 128
       Code:
         ZipFile: |
           def handler(event, context):
-              return "Hello from Lambda"
+              return {"statusCode": 200, "body": "Hello from Lambda"}
 
   # ======================
   # ECS Role
