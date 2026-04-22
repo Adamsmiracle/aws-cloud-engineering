@@ -9,25 +9,17 @@ Parameters:
 Resources:
 
   # ======================
-  # VPC (for GitSync simplicity)
-  # ======================
-  DefaultVPC:
-    Type: AWS::EC2::VPC
-    Properties:
-      CidrBlock: 10.0.0.0/16
-
-  # ======================
   # Security Group
   # ======================
-Level1SecurityGroup:
-  Type: AWS::EC2::SecurityGroup
-  Properties:
-    GroupDescription: Security group for Level 1 Security Lab
-    SecurityGroupIngress:
-      - IpProtocol: tcp
-        FromPort: 80
-        ToPort: 80
-        CidrIp: 0.0.0.0/0
+  Level1SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Level 1 Security Lab
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
 
   # ======================
   # EC2
@@ -35,7 +27,7 @@ Level1SecurityGroup:
   EC2S3ReadRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: ec2-s3-read-access
+      RoleName: !Sub "${AWS::StackName}-ec2-s3-read-access"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -52,15 +44,15 @@ Level1SecurityGroup:
       Roles:
         - !Ref EC2S3ReadRole
 
-MyEc2Instance:
-  Type: AWS::EC2::Instance
-  DependsOn: EC2InstanceProfile
-  Properties:
-    ImageId: !Sub "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}"
-    InstanceType: t3.micro
-    IamInstanceProfile: !Ref EC2InstanceProfile
-    SecurityGroupIds:
-      - !Ref Level1SecurityGroup
+  MyEc2Instance:
+    Type: AWS::EC2::Instance
+    DependsOn: EC2InstanceProfile
+    Properties:
+      ImageId: !Sub "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}"
+      InstanceType: t3.micro
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      SecurityGroupIds:
+        - !Ref Level1SecurityGroup
 
   # ======================
   # Lambda
@@ -68,7 +60,7 @@ MyEc2Instance:
   LambdaS3ReadRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: lambda-s3-read-only
+      RoleName: !Sub "${AWS::StackName}-lambda-s3-read-only"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -246,8 +238,6 @@ MyEc2Instance:
       Name: !Sub "${AWS::StackName}/secret"
       KmsKeyId: !Ref ProductionKMSKey
       SecretString: '{"password":"demo"}'
-
-
 
 
 
