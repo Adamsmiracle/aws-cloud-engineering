@@ -15,6 +15,7 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Security group for Level 1 Security Lab
+      VpcId: !Ref AWS::NoValue  # Added VpcId - required for security groups
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
@@ -48,7 +49,7 @@ Resources:
     Type: AWS::EC2::Instance
     DependsOn: EC2InstanceProfile
     Properties:
-      ImageId: !Sub "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}"
+      ImageId: !Sub "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64}}"  # Fixed SSM parameter path
       InstanceType: t3.micro
       IamInstanceProfile: !Ref EC2InstanceProfile
       SecurityGroupIds:
@@ -75,7 +76,7 @@ Resources:
   MyLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
-      Runtime: python3.9
+      Runtime: python3.12  # Updated to supported runtime version
       Role: !GetAtt LambdaS3ReadRole.Arn
       Handler: index.handler
       Code:
@@ -143,7 +144,6 @@ Resources:
       KeyPolicy:
         Version: "2012-10-17"
         Statement:
-
           - Sid: RootAccess
             Effect: Allow
             Principal:
@@ -194,7 +194,7 @@ Resources:
             Resource: "*"
             Condition:
               StringEquals:
-                aws:SourceAccount: !Ref AWS::AccountId
+                "aws:SourceAccount": !Ref AWS::AccountId
 
           - Sid: AllowSecretsManagerUse
             Effect: Allow
@@ -206,7 +206,7 @@ Resources:
             Resource: "*"
             Condition:
               StringEquals:
-                aws:SourceAccount: !Ref AWS::AccountId
+                "aws:SourceAccount": !Ref AWS::AccountId
 
       Tags:
         - Key: Environment
@@ -238,6 +238,9 @@ Resources:
       Name: !Sub "${AWS::StackName}/secret"
       KmsKeyId: !Ref ProductionKMSKey
       SecretString: '{"password":"demo"}'
+
+
+
 
 
 
