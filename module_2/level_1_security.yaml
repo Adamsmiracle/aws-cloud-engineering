@@ -19,16 +19,15 @@ Resources:
   # ======================
   # Security Group
   # ======================
-  Level1SecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Security group for Level 1 Security Lab
-      VpcId: !Ref DefaultVPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          CidrIp: 0.0.0.0/0
+Level1SecurityGroup:
+  Type: AWS::EC2::SecurityGroup
+  Properties:
+    GroupDescription: Security group for Level 1 Security Lab
+    SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
 
   # ======================
   # EC2
