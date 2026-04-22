@@ -1,21 +1,261 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Tighten your IAM Permissions (GitSync Compatible - Secure)
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: production
+
+Resources:
+
+  # ======================
+  # VPC (for GitSync simplicity)
+  # ======================
+  DefaultVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+
+  # ======================
+  # Security Group
+  # ======================
+  Level1SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Level 1 Security Lab
+      VpcId: !Ref DefaultVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+  # ======================
+  # EC2
+  # ======================
+  EC2S3ReadRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: ec2-s3-read-access
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref EC2S3ReadRole
+
+  MyEc2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Sub "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}"
+      InstanceType: t3.micro
+      IamInstanceProfile: !Ref EC2InstanceProfile
+
+  # ======================
+  # Lambda
+  # ======================
+  LambdaS3ReadRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: lambda-s3-read-only
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  MyLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.9
+      Role: !GetAtt LambdaS3ReadRole.Arn
+      Handler: index.handler
+      Code:
+        ZipFile: |
+          def handler(event, context):
+              return "Hello from Lambda"
+
+  # ======================
+  # ECS Role
+  # ======================
+  ECSTasksS3BucketRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-ecs-task-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+
+  # ======================
+  # KMS Roles
+  # ======================
+  KeyAdminRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-kms-admin"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: sts:AssumeRole
+
+  AppRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-kms-app"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+                - ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+
+  # ======================
+  # KMS Key
+  # ======================
+  ProductionKMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: KMS Key for Parameter Store and Secrets Manager
+      EnableKeyRotation: true
+      KeySpec: SYMMETRIC_DEFAULT
+      KeyUsage: ENCRYPT_DECRYPT
+      PendingWindowInDays: 30
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+
+          - Sid: RootAccess
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: "kms:*"
+            Resource: "*"
+
+          - Sid: AdminAccess
+            Effect: Allow
+            Principal:
+              AWS:
+                - !GetAtt KeyAdminRole.Arn
+            Action:
+              - "kms:Create*"
+              - "kms:Describe*"
+              - "kms:Enable*"
+              - "kms:List*"
+              - "kms:Put*"
+              - "kms:Update*"
+              - "kms:Revoke*"
+              - "kms:Disable*"
+              - "kms:Get*"
+              - "kms:TagResource"
+              - "kms:UntagResource"
+              - "kms:CancelKeyDeletion"
+            Resource: "*"
+
+          - Sid: AppAccess
+            Effect: Allow
+            Principal:
+              AWS:
+                - !GetAtt AppRole.Arn
+            Action:
+              - "kms:Encrypt"
+              - "kms:Decrypt"
+              - "kms:ReEncrypt*"
+              - "kms:GenerateDataKey*"
+              - "kms:DescribeKey"
+            Resource: "*"
+
+          - Sid: AllowSSMServiceUse
+            Effect: Allow
+            Principal:
+              Service: ssm.amazonaws.com
+            Action:
+              - "kms:Decrypt"
+              - "kms:GenerateDataKey*"
+            Resource: "*"
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+
+          - Sid: AllowSecretsManagerUse
+            Effect: Allow
+            Principal:
+              Service: secretsmanager.amazonaws.com
+            Action:
+              - "kms:Decrypt"
+              - "kms:GenerateDataKey*"
+            Resource: "*"
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+
+      Tags:
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  ProductionKMSKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub "alias/${AWS::StackName}-kms"
+      TargetKeyId: !Ref ProductionKMSKey
+
+  # ======================
+  # SSM Parameter
+  # ======================
+  ProductionDatabaseKeyParams:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: "/production/database/keys"
+      Type: SecureString
+      KeyId: !Ref ProductionKMSKey
+      Value: "initial-demo-value"
+
+  # ======================
+  # Secrets Manager
+  # ======================
+  ProductionAppSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub "${AWS::StackName}/secret"
+      KmsKeyId: !Ref ProductionKMSKey
+      SecretString: '{"password":"demo"}'
+
+
+
+
+
 # AWSTemplateFormatVersion: "2010-09-09"
 # Description: Tighten your IAM Permissions 
-
-
 
 # Parameters:
 #   EnvironmentName:
 #     Type: String
 #     Default: production
-
-#   KeyAdminRoleArn:
-#     Type: String
-#     Description: "ARN of the IAM role that will administer the KMS key"
-
-#   AppRoleArn:
-#     Type: String
-#     Description: "ARN of the IAM role that will use the key in cryptographic operations (e.g. ECS Task Role)"
-
 
 # Resources:
   
@@ -23,26 +263,24 @@
 #     Type: "AWS::EC2::SecurityGroup"
 #     Properties:
 #       GroupDescription: "Security group for Level 1 Security Lab" 
-#       VpcId: vpc-0bde4c384335984d4
+#       VpcId:
+#         Type: "AWS::EC2::VPC::Id"
 #       SecurityGroupIngress:
 #         - IpProtocol: tcp
 #           FromPort: 80
-#           ToPort: 800
+#           ToPort: 80
 #           CidrIp: 0.0.0.0/0
-
-
 
 # # ===============
 # # EC2
 # # ===============
 
-# # EC2 Role with S3 read access
+#   # EC2 Role with S3 read access
 #   EC2S3ReadRole:
 #     Type: "AWS::IAM::Role"
 #     Properties:
 #       RoleName: "ec2-s3-read-access"
 #       AssumeRolePolicyDocument:
-#         Name: "EC2S3ReadAccessAssumeRolePolicy"
 #         Version: "2012-10-17"
 #         Statement:
 #           - Effect: "Allow"
@@ -54,7 +292,7 @@
 #         - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
 #       Description: "Role for EC2 to read s3 buckets"
 
-# # EC2 Instance Profile for EC2S3ReadRole
+#   # EC2 Instance Profile for EC2S3ReadRole
 #   EC2InstanceProfile:
 #     Type: "AWS::IAM::InstanceProfile"
 #     Properties:
@@ -69,18 +307,16 @@
 #       InstanceType: "t3.micro"
 #       IamInstanceProfile: !Ref EC2InstanceProfile
 
-
 # # ===============
 # # Lambda
 # # ===============
 
-# # Lambda Role with S3 read access
+#   # Lambda Role with S3 read access
 #   LambdaS3ReadRole:
 #     Type: "AWS::IAM::Role"
 #     Properties:
 #       RoleName: "lambda-s3-read-only"
 #       AssumeRolePolicyDocument:
-#         Name: "LambdaS3ReadAccessAssumeRolePolicy"
 #         Version: "2012-10-17"
 #         Statement:
 #           - Effect: "Allow"
@@ -90,14 +326,15 @@
 #               - "sts:AssumeRole"
 #       ManagedPolicyArns:
 #         - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+#         - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 #       Description: "Role for Lambda to read s3 buckets"
 
-# # LAmbda Function with LambdaS3ReadRole
+#   # Lambda Function with LambdaS3ReadRole
 #   MyLambdaFunction:
 #     Type: "AWS::Lambda::Function"
 #     Properties:
 #       FunctionName: "MyS3ReadOnlyLambda"
-#       Runtime: "python3.8"
+#       Runtime: "python3.9"
 #       Role: !GetAtt LambdaS3ReadRole.Arn
 #       Handler: "lambda_function.lambda_handler"
 #       Code:
@@ -105,14 +342,11 @@
 #           def lambda_handler(event, context):
 #               return "Hello from Lambda with S3 Read-Only Access!"
 
-
-
-# # ============================================================================================================================================================
 # # ===============
 # # ECS
 # # ===============
 
-# # Task Execution Role 
+#   # Task Execution Role 
 #   ECSTaskExecutionRole:
 #     Type: "AWS::IAM::Role"
 #     Properties:
@@ -128,7 +362,6 @@
 #       ManagedPolicyArns:
 #         - "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 #       Description: "Role for ECS tasks to execute and pull images from ECR"
-
 
 #   # ECS EC2 Instance Role
 #   ECSInstanceRole:
@@ -171,16 +404,48 @@
 #         - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
 #       Description: "Role for ECS tasks to read from S3 buckets"
 
+# # ===============
+# # IAM Roles for KMS
+# # ===============
 
+#   # Key Admin Role - Created BEFORE the KMS key
+#   KeyAdminRole:
+#     Type: "AWS::IAM::Role"
+#     Properties:
+#       RoleName: !Sub "${AWS::StackName}-kms-key-admin-role"
+#       AssumeRolePolicyDocument:
+#         Version: "2012-10-17"
+#         Statement:
+#           - Effect: Allow
+#             Principal:
+#               AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+#             Action: "sts:AssumeRole"
+#       Description: "Role for administering KMS keys"
 
-# # ============================================================================================================================================================
+#   # App Role for cryptographic operations
+#   AppRole:
+#     Type: "AWS::IAM::Role"
+#     Properties:
+#       RoleName: !Sub "${AWS::StackName}-app-kms-user-role"
+#       AssumeRolePolicyDocument:
+#         Version: "2012-10-17"
+#         Statement:
+#           - Effect: Allow
+#             Principal:
+#               Service: 
+#                 - "ecs-tasks.amazonaws.com"
+#                 - "lambda.amazonaws.com"
+#             Action: "sts:AssumeRole"
+#       Description: "Role for applications to use KMS for cryptographic operations"
 
+# # ===============
+# # KMS Key
+# # ===============
 
-#       # Systems manager parameter Store
 #   ProductionKMSKey:
 #     Type: "AWS::KMS::Key"
 #     Properties:
-#       Description: "KMS Key for encrypting ssm parameter Store secrets"
+#       Description: "KMS Key for encrypting SSM Parameter Store secrets"
 #       Enabled: true
 #       EnableKeyRotation: true
 #       KeySpec: SYMMETRIC_DEFAULT
@@ -189,8 +454,7 @@
 #       KeyPolicy: 
 #         Version: "2012-10-17"
 #         Statement:
-
-#         # Root account full control
+#           # Root account full control
 #           - Sid: "EnableRootAccountAccess"
 #             Effect: "Allow"
 #             Principal:
@@ -198,12 +462,12 @@
 #             Action: "kms:*"
 #             Resource: "*"
 
-
-#             # Key administrators - manage but Not use cryptographically
+#           # Key administrators - manage but not use cryptographically
 #           - Sid: "AllowKeyAdministration"
 #             Effect: "Allow"
 #             Principal:
-#               AWS: !GetAtt KeyAdminRole.Arn
+#               AWS: 
+#                - !GetAtt KeyAdminRole.Arn
 #             Action:
 #               - "kms:Create*"
 #               - "kms:Describe*"
@@ -219,10 +483,23 @@
 #               - "kms:CancelKeyDeletion"
 #             Resource: "*"
 
+#           # Application role - use for cryptographic operations
+#           - Sid: "AllowApplicationUse"
+#             Effect: "Allow"
+#             Principal:
+#               AWS: 
+#                - !GetAtt AppRole.Arn
+#             Action:
+#               - "kms:Encrypt"
+#               - "kms:Decrypt"
+#               - "kms:ReEncrypt*"
+#               - "kms:GenerateDataKey*"
+#               - "kms:DescribeKey"
+#             Resource: "*"
 
-#             # SSM Service - needed to encrypt/decrypt SecureString params
+#           # SSM Service - needed to encrypt/decrypt SecureString params
 #           - Sid: "AllowSSMServiceUse"
-#             Effect: Allow
+#             Effect: "Allow"
 #             Principal:
 #               Service: "ssm.amazonaws.com"
 #             Action:
@@ -231,24 +508,25 @@
 #             Resource: "*"
 #             Condition:
 #               StringEquals:
-#                 aws:SourceAccount: !Ref AWS::AccountId
-#     Tags:
-#       - Key: "Environment"
-#         Value: !Ref EnvironmentName
-#       - Key: "ManagedBy"
-#         Value: "CloudFormation"
+#                 "aws:SourceAccount": !Ref "AWS::AccountId"
 
-
-#   KeyAdminRole:
-#     Type: "AWS::IAM::Role"
-#     Properties:
-#       AssumeRolePolicyDocument:
-#         Version: "2012-10-17"
-#         Statement:
-#           - Effect: Allow
+#           # Secrets Manager Service
+#           - Sid: "AllowSecretsManagerUse"
+#             Effect: "Allow"
 #             Principal:
-#               AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
-#             Action: "sts:AssumeRole"
+#               Service: "secretsmanager.amazonaws.com"
+#             Action:
+#               - "kms:Decrypt"
+#               - "kms:GenerateDataKey*"
+#             Resource: "*"
+#             Condition:
+#               StringEquals:
+#                 "aws:SourceAccount": !Ref "AWS::AccountId"
+#       Tags:
+#         - Key: "Environment"
+#           Value: !Ref EnvironmentName
+#         - Key: "ManagedBy"
+#           Value: "CloudFormation"
 
 #   ProductionKMSKeyAlias:
 #     Type: "AWS::KMS::Alias"
@@ -256,11 +534,9 @@
 #       AliasName: !Sub "alias/${AWS::StackName}-production-kms-key"
 #       TargetKeyId: !Ref ProductionKMSKey
 
-
-# # =============================================================
-#   # 2. SSM PARAMETER STORE — SecureString parameter
-#   #    Hierarchical naming: /production/database/keys
-#   # =============================================================
+# # ===============
+# # SSM Parameter Store
+# # ===============
 
 #   ProductionDatabaseKeyParams:
 #     Type: "AWS::SSM::Parameter"
@@ -269,420 +545,94 @@
 #       Description: "Production database encryption keys"
 #       Type: SecureString
 #       KeyId: !Ref ProductionKMSKey
-#       Value: "initial-demo-value"
+#       Value: "initial-demo-value-change-me"
+#       Tags:
+#         Environment: !Ref EnvironmentName
+#         ManagedBy: CloudFormation
 
-
-
-
-# # ============================================================================================================================================================
-# # SECRET MANAGER
-
+# # ===============
+# # Secrets Manager
+# # ===============
 
 #   ProductionAppSecret:
 #     Type: "AWS::SecretsManager::Secret"
 #     Properties:
-#       Name: "tutorial/MyFirstSecret"
+#       Name: !Sub "${AWS::StackName}/MyFirstSecret"
 #       Description: "Access credentials for production API"
 #       KmsKeyId: !Ref ProductionKMSKey
-#       SecretString: '{"MyPassword":"initial-demo-secret-value"}'
+#       SecretString: '{"MyPassword":"initial-demo-secret-value-change-me"}'
+#       Tags:
+#         - Key: Environment
+#           Value: !Ref EnvironmentName
+#         - Key: ManagedBy
+#           Value: CloudFormation
 
+# # ===============
+# # IAM Policies for Parameter/Secret Access
+# # ===============
 
+#   ParameterStoreAccessPolicy:
+#     Type: "AWS::IAM::Policy"
+#     Properties:
+#       PolicyName: "ParameterStoreAccess"
+#       PolicyDocument:
+#         Version: "2012-10-17"
+#         Statement:
+#           - Effect: Allow
+#             Action:
+#               - "ssm:GetParameter"
+#               - "ssm:GetParameters"
+#               - "ssm:GetParametersByPath"
+#             Resource: 
+#               - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/production/*"
+#           - Effect: Allow
+#             Action:
+#               - "kms:Decrypt"
+#             Resource: !GetAtt ProductionKMSKey.Arn
+#       Roles:
+#         - !Ref ECSTasksS3BucketRole
+#         - !Ref LambdaS3ReadRole
 
+#   SecretsManagerAccessPolicy:
+#     Type: "AWS::IAM::Policy"
+#     Properties:
+#       PolicyName: "SecretsManagerAccess"
+#       PolicyDocument:
+#         Version: "2012-10-17"
+#         Statement:
+#           - Effect: Allow
+#             Action:
+#               - "secretsmanager:GetSecretValue"
+#             Resource: !Ref ProductionAppSecret.Arn
+#           - Effect: Allow
+#             Action:
+#               - "kms:Decrypt"
+#             Resource: !GetAtt ProductionKMSKey.Arn
+#       Roles:
+#         - !Ref ECSTasksS3BucketRole
+#         - !Ref LambdaS3ReadRole
 
+# Outputs:
+#   KMSKeyId:
+#     Description: "KMS Key ID for encryption"
+#     Value: !Ref ProductionKMSKey
+#     Export:
+#       Name: !Sub "${AWS::StackName}-KMSKeyId"
 
+#   KMSKeyArn:
+#     Description: "KMS Key ARN for encryption"
+#     Value: !GetAtt ProductionKMSKey.Arn
+#     Export:
+#       Name: !Sub "${AWS::StackName}-KMSKeyArn"
 
+#   ParameterName:
+#     Description: "SSM Parameter name"
+#     Value: !Ref ProductionDatabaseKeyParams
+#     Export:
+#       Name: !Sub "${AWS::StackName}-ParameterName"
 
-
-
-
-
-
-
-
-
-
-
-AWSTemplateFormatVersion: "2010-09-09"
-Description: Tighten your IAM Permissions 
-
-Parameters:
-  EnvironmentName:
-    Type: String
-    Default: production
-
-Resources:
-  
-  Level1SecurityGroup:
-    Type: "AWS::EC2::SecurityGroup"
-    Properties:
-      GroupDescription: "Security group for Level 1 Security Lab" 
-      VpcId: vpc-0bde4c384335984d4
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 800
-          CidrIp: 0.0.0.0/0
-
-# ===============
-# EC2
-# ===============
-
-  # EC2 Role with S3 read access
-  EC2S3ReadRole:
-    Type: "AWS::IAM::Role"
-    Properties:
-      RoleName: "ec2-s3-read-access"
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: "Allow"
-            Principal:
-              Service: "ec2.amazonaws.com"
-            Action: 
-              - "sts:AssumeRole"
-      ManagedPolicyArns:
-        - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
-      Description: "Role for EC2 to read s3 buckets"
-
-  # EC2 Instance Profile for EC2S3ReadRole
-  EC2InstanceProfile:
-    Type: "AWS::IAM::InstanceProfile"
-    Properties:
-      Roles:
-        - !Ref EC2S3ReadRole
-
-  # EC2 Instance with EC2S3ReadRole
-  MyEc2Instance:
-    Type: "AWS::EC2::Instance"
-    Properties:
-      ImageId: ami-0a0823e4ea064404d
-      InstanceType: "t3.micro"
-      IamInstanceProfile: !Ref EC2InstanceProfile
-
-# ===============
-# Lambda
-# ===============
-
-  # Lambda Role with S3 read access
-  LambdaS3ReadRole:
-    Type: "AWS::IAM::Role"
-    Properties:
-      RoleName: "lambda-s3-read-only"
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: "Allow"
-            Principal:
-              Service: "lambda.amazonaws.com"
-            Action: 
-              - "sts:AssumeRole"
-      ManagedPolicyArns:
-        - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
-        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-      Description: "Role for Lambda to read s3 buckets"
-
-  # Lambda Function with LambdaS3ReadRole
-  MyLambdaFunction:
-    Type: "AWS::Lambda::Function"
-    Properties:
-      FunctionName: "MyS3ReadOnlyLambda"
-      Runtime: "python3.9"
-      Role: !GetAtt LambdaS3ReadRole.Arn
-      Handler: "lambda_function.lambda_handler"
-      Code:
-        ZipFile: |
-          def lambda_handler(event, context):
-              return "Hello from Lambda with S3 Read-Only Access!"
-
-# ===============
-# ECS
-# ===============
-
-  # Task Execution Role 
-  ECSTaskExecutionRole:
-    Type: "AWS::IAM::Role"
-    Properties:
-      RoleName: !Sub "${AWS::StackName}-ecs-task-execution-role"
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: "Allow"
-            Principal:
-              Service: "ecs-tasks.amazonaws.com"
-            Action: 
-              - "sts:AssumeRole"
-      ManagedPolicyArns:
-        - "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-      Description: "Role for ECS tasks to execute and pull images from ECR"
-
-  # ECS EC2 Instance Role
-  ECSInstanceRole:
-    Type: "AWS::IAM::Role"
-    Properties:
-      RoleName: !Sub "${AWS::StackName}-ecs-instance-role"
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: "Allow"
-            Principal:
-              Service: "ec2.amazonaws.com"
-            Action: 
-              - "sts:AssumeRole"
-      ManagedPolicyArns:
-        - "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
-      Description: "Role for EC2 instances in ECS cluster"
-
-  # Instance Profile for ECS EC2 Instance Role
-  ECSInstanceProfile:
-    Type: "AWS::IAM::InstanceProfile"
-    Properties:
-      Roles:
-        - !Ref ECSInstanceRole
-
-  # IAM ROLE FOR TASKS
-  ECSTasksS3BucketRole:
-    Type: "AWS::IAM::Role"
-    Properties:
-      RoleName: !Sub "${AWS::StackName}-ecs-tasks-s3-access-role"
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: "Allow"
-            Principal:
-              Service: "ecs-tasks.amazonaws.com"
-            Action:
-              - "sts:AssumeRole"
-      ManagedPolicyArns:
-        - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
-      Description: "Role for ECS tasks to read from S3 buckets"
-
-# ===============
-# IAM Roles for KMS
-# ===============
-
-  # Key Admin Role - Created BEFORE the KMS key
-  KeyAdminRole:
-    Type: "AWS::IAM::Role"
-    Properties:
-      RoleName: !Sub "${AWS::StackName}-kms-key-admin-role"
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
-            Action: "sts:AssumeRole"
-      Description: "Role for administering KMS keys"
-
-  # App Role for cryptographic operations
-  AppRole:
-    Type: "AWS::IAM::Role"
-    Properties:
-      RoleName: !Sub "${AWS::StackName}-app-kms-user-role"
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: 
-                - "ecs-tasks.amazonaws.com"
-                - "lambda.amazonaws.com"
-            Action: "sts:AssumeRole"
-      Description: "Role for applications to use KMS for cryptographic operations"
-
-# ===============
-# KMS Key
-# ===============
-
-  ProductionKMSKey:
-    Type: "AWS::KMS::Key"
-    Properties:
-      Description: "KMS Key for encrypting SSM Parameter Store secrets"
-      Enabled: true
-      EnableKeyRotation: true
-      KeySpec: SYMMETRIC_DEFAULT
-      KeyUsage: ENCRYPT_DECRYPT
-      PendingWindowInDays: 30
-      KeyPolicy: 
-        Version: "2012-10-17"
-        Statement:
-          # Root account full control
-          - Sid: "EnableRootAccountAccess"
-            Effect: "Allow"
-            Principal:
-              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
-            Action: "kms:*"
-            Resource: "*"
-
-          # Key administrators - manage but not use cryptographically
-          - Sid: "AllowKeyAdministration"
-            Effect: "Allow"
-            Principal:
-              AWS: !GetAtt KeyAdminRole.Arn
-            Action:
-              - "kms:Create*"
-              - "kms:Describe*"
-              - "kms:Enable*"
-              - "kms:List*"
-              - "kms:Put*"
-              - "kms:Update*"
-              - "kms:Revoke*"
-              - "kms:Disable*"
-              - "kms:Get*"
-              - "kms:TagResource"
-              - "kms:UntagResource"
-              - "kms:CancelKeyDeletion"
-            Resource: "*"
-
-          # Application role - use for cryptographic operations
-          - Sid: "AllowApplicationUse"
-            Effect: "Allow"
-            Principal:
-              AWS: !GetAtt AppRole.Arn
-            Action:
-              - "kms:Encrypt"
-              - "kms:Decrypt"
-              - "kms:ReEncrypt*"
-              - "kms:GenerateDataKey*"
-              - "kms:DescribeKey"
-            Resource: "*"
-
-          # SSM Service - needed to encrypt/decrypt SecureString params
-          - Sid: "AllowSSMServiceUse"
-            Effect: "Allow"
-            Principal:
-              Service: "ssm.amazonaws.com"
-            Action:
-              - "kms:Decrypt"
-              - "kms:GenerateDataKey*"
-            Resource: "*"
-            Condition:
-              StringEquals:
-                "aws:SourceAccount": !Ref "AWS::AccountId"
-
-          # Secrets Manager Service
-          - Sid: "AllowSecretsManagerUse"
-            Effect: "Allow"
-            Principal:
-              Service: "secretsmanager.amazonaws.com"
-            Action:
-              - "kms:Decrypt"
-              - "kms:GenerateDataKey*"
-            Resource: "*"
-            Condition:
-              StringEquals:
-                "aws:SourceAccount": !Ref "AWS::AccountId"
-      Tags:
-        - Key: "Environment"
-          Value: !Ref EnvironmentName
-        - Key: "ManagedBy"
-          Value: "CloudFormation"
-
-  ProductionKMSKeyAlias:
-    Type: "AWS::KMS::Alias"
-    Properties:
-      AliasName: !Sub "alias/${AWS::StackName}-production-kms-key"
-      TargetKeyId: !Ref ProductionKMSKey
-
-# ===============
-# SSM Parameter Store
-# ===============
-
-  ProductionDatabaseKeyParams:
-    Type: "AWS::SSM::Parameter"
-    Properties:
-      Name: "/production/database/keys"
-      Description: "Production database encryption keys"
-      Type: SecureString
-      KeyId: !Ref ProductionKMSKey
-      Value: "initial-demo-value-change-me"
-      Tags:
-        Environment: !Ref EnvironmentName
-        ManagedBy: CloudFormation
-
-# ===============
-# Secrets Manager
-# ===============
-
-  ProductionAppSecret:
-    Type: "AWS::SecretsManager::Secret"
-    Properties:
-      Name: !Sub "${AWS::StackName}/MyFirstSecret"
-      Description: "Access credentials for production API"
-      KmsKeyId: !Ref ProductionKMSKey
-      SecretString: '{"MyPassword":"initial-demo-secret-value-change-me"}'
-      Tags:
-        - Key: Environment
-          Value: !Ref EnvironmentName
-        - Key: ManagedBy
-          Value: CloudFormation
-
-# ===============
-# IAM Policies for Parameter/Secret Access
-# ===============
-
-  ParameterStoreAccessPolicy:
-    Type: "AWS::IAM::Policy"
-    Properties:
-      PolicyName: "ParameterStoreAccess"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - "ssm:GetParameter"
-              - "ssm:GetParameters"
-              - "ssm:GetParametersByPath"
-            Resource: 
-              - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/production/*"
-          - Effect: Allow
-            Action:
-              - "kms:Decrypt"
-            Resource: !GetAtt ProductionKMSKey.Arn
-      Roles:
-        - !Ref ECSTasksS3BucketRole
-        - !Ref LambdaS3ReadRole
-
-  SecretsManagerAccessPolicy:
-    Type: "AWS::IAM::Policy"
-    Properties:
-      PolicyName: "SecretsManagerAccess"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - "secretsmanager:GetSecretValue"
-            Resource: !Ref ProductionAppSecret
-          - Effect: Allow
-            Action:
-              - "kms:Decrypt"
-            Resource: !GetAtt ProductionKMSKey.Arn
-      Roles:
-        - !Ref ECSTasksS3BucketRole
-        - !Ref LambdaS3ReadRole
-
-Outputs:
-  KMSKeyId:
-    Description: "KMS Key ID for encryption"
-    Value: !Ref ProductionKMSKey
-    Export:
-      Name: !Sub "${AWS::StackName}-KMSKeyId"
-
-  KMSKeyArn:
-    Description: "KMS Key ARN for encryption"
-    Value: !GetAtt ProductionKMSKey.Arn
-    Export:
-      Name: !Sub "${AWS::StackName}-KMSKeyArn"
-
-  ParameterName:
-    Description: "SSM Parameter name"
-    Value: !Ref ProductionDatabaseKeyParams
-    Export:
-      Name: !Sub "${AWS::StackName}-ParameterName"
-
-  SecretArn:
-    Description: "Secrets Manager secret ARN"
-    Value: !Ref ProductionAppSecret
-    Export:
-      Name: !Sub "${AWS::StackName}-SecretArn"
+#   SecretArn:
+#     Description: "Secrets Manager secret ARN"
+#     Value: !Ref ProductionAppSecret
+#     Export:
+#       Name: !Sub "${AWS::StackName}-SecretArn"
