@@ -54,6 +54,7 @@ Level1SecurityGroup:
 
 MyEc2Instance:
   Type: AWS::EC2::Instance
+  DependsOn: EC2InstanceProfile
   Properties:
     ImageId: !Sub "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}"
     InstanceType: t3.micro
