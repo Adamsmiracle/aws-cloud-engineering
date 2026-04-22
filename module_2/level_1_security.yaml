@@ -208,10 +208,9 @@ Resources:
     Type: AWS::SSM::Parameter
     Properties:
       Name: !Sub "/${AWS::StackName}/database/keys"
-      Type: SecureString
-      KeyId: !Ref ProductionKMSKey
+      Type: String
       Value: "initial-demo-value-change-me"
-      Description: "Database keys for production environment"
+      Description: "Non-secret database metadata for production environment"
       Tags:
         Environment: !Ref EnvironmentName
 
