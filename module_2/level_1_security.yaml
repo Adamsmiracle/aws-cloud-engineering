@@ -52,12 +52,14 @@ Level1SecurityGroup:
       Roles:
         - !Ref EC2S3ReadRole
 
-  MyEc2Instance:
-    Type: AWS::EC2::Instance
-    Properties:
-      ImageId: !Sub "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}"
-      InstanceType: t3.micro
-      IamInstanceProfile: !Ref EC2InstanceProfile
+MyEc2Instance:
+  Type: AWS::EC2::Instance
+  Properties:
+    ImageId: !Sub "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}"
+    InstanceType: t3.micro
+    IamInstanceProfile: !Ref EC2InstanceProfile
+    SecurityGroupIds:
+      - !Ref Level1SecurityGroup
 
   # ======================
   # Lambda
