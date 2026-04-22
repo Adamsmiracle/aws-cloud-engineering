@@ -67,6 +67,24 @@ Resources:
         - Key: Environment
           Value: !Ref EnvironmentName
 
+
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Tags:
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+
   ECSTaskRole:
     Type: AWS::IAM::Role
     Properties:
@@ -225,8 +243,7 @@ Resources:
       KmsKeyId: !Ref ProductionKMSKey
       SecretString: !Sub |
         {
-          "password": "demo-password-change-me",
-          "api_key": "demo-api-key-change-me"
+          "MyPassword": "demo-password-change-me",
         }
       Tags:
         - Key: Environment
@@ -256,4 +273,3 @@ Outputs:
     Value: !Ref ProductionKMSKey
     Export:
       Name: !Sub "${AWS::StackName}-KMSKey"
-
