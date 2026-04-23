@@ -1,8 +1,5 @@
-
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Advanced Security Lab
-
-
 
 Resources:
 
@@ -11,7 +8,6 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub "${AWS::StackName}-bucket-with-bucket-policy"
-
 
   MyBucketPolicy:
     Type: AWS::S3::BucketPolicy
@@ -23,17 +19,12 @@ Resources:
           - Sid: AllowUserToPutObjectOnly
             Effect: Allow
             Principal:
-              AWS: arn:aws:iam::${AWS::AccountId}:user/ec2-user1
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:user/ec2-user1"
             Action:
               - s3:PutObject
             Resource: !Sub "${MyS3Bucket.Arn}/*"
 
-
-
-
-
-  # vpc
-
+  # IAM Role
   WorkshopEC2InstanceRole:
     Type: AWS::IAM::Role
     Properties:
@@ -49,9 +40,7 @@ Resources:
         - arn:aws:iam::aws:policy/AmazonSSMFullAccess
         - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
 
-
-
-  # Vpc
+  # VPC
   WorkshopVPC:
     Type: AWS::EC2::VPC
     Properties:
@@ -59,8 +48,8 @@ Resources:
       EnableDnsSupport: true
       EnableDnsHostnames: true
       Tags:
-        - key: Name
-          value: WorkshopVPC
+        - Key: Name
+          Value: WorkshopVPC
 
   # Private Subnet
   WorkshopPrivateSubnet:
@@ -70,8 +59,8 @@ Resources:
       CidrBlock: 10.0.1.0/24
       AvailabilityZone: !Select [ 0, !GetAZs '' ]
       Tags:
-        - key: Name
-          value: WorkshopPrivateSubnet
+        - Key: Name
+          Value: WorkshopPrivateSubnet
 
   # Route table for the private subnet
   WorkshopPrivateRouteTable:
@@ -79,8 +68,8 @@ Resources:
     Properties:
       VpcId: !Ref WorkshopVPC
       Tags:
-        - key: Name
-          value: WorkshopPrivateRouteTable
+        - Key: Name
+          Value: WorkshopPrivateRouteTable
   
   # Association of the private subnet with the route table
   WorkshopPrivateSubnetRouteTableAssociation:
@@ -89,13 +78,21 @@ Resources:
       SubnetId: !Ref WorkshopPrivateSubnet
       RouteTableId: !Ref WorkshopPrivateRouteTable
 
+  # Security Group for EC2 Instance
+  WorkshopEC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Workshop EC2 instance
+      VpcId: !Ref WorkshopVPC
+      Tags:
+        - Key: Name
+          Value: WorkshopEC2SecurityGroup
 
   WorkshopEC2InstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
       Roles:
         - !Ref WorkshopEC2InstanceRole
-
 
   WorkshopEC2Instance:
     Type: AWS::EC2::Instance
@@ -104,10 +101,11 @@ Resources:
       InstanceType: t2.micro
       SubnetId: !Ref WorkshopPrivateSubnet
       IamInstanceProfile: !Ref WorkshopEC2InstanceProfile
+      SecurityGroupIds:
+        - !Ref WorkshopEC2SecurityGroup
       Tags:
-        - key: Name
+        - Key: Name
           Value: WorkshopEC2Instance
-
 
   # The Accessible bucket
   AccessibleS3Bucket:
@@ -131,7 +129,6 @@ Resources:
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
 
-
   S3GatewayEndpoint:
     Type: AWS::EC2::VPCEndpoint
     Properties:
@@ -145,21 +142,19 @@ Resources:
             Principal: "*"
             Action: "s3:*"
             Resource: "*"
-
           - Effect: Deny
             Principal: "*"
             Action: "s3:*"
             Resource:
               - !Sub "${UnaccessibleS3Bucket.Arn}"
               - !Sub "${UnaccessibleS3Bucket.Arn}/*"
-        Tags:
-          - key: Name
-            value: S3GatewayEndpoint
       RouteTableIds:
         - !Ref WorkshopPrivateRouteTable
+      Tags:
+        - Key: Name
+          Value: S3GatewayEndpoint
 
-    
-    # Security for the interface endpoint
+  # Security for the interface endpoint
   EndpointSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -169,10 +164,10 @@ Resources:
         - IpProtocol: tcp
           FromPort: 443
           ToPort: 443
+          CidrIp: 10.0.0.0/16
       Tags:
-        - key: Name
-          value: EndpointSecurityGroup
-
+        - Key: Name
+          Value: EndpointSecurityGroup
 
   # Interface endpoint for s3
   S3InterfaceEndpoint:
@@ -181,7 +176,7 @@ Resources:
       VpcId: !Ref WorkshopVPC
       ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
       VpcEndpointType: Interface
-      EnableDnsNames: true
+      PrivateDnsEnabled: true
       SubnetIds:
         - !Ref WorkshopPrivateSubnet
       SecurityGroupIds:
@@ -194,5 +189,5 @@ Resources:
             Action: "s3:*"
             Resource: "*"
       Tags:
-        - key: Name
-          value: S3InterfaceEndpoint
+        - Key: Name
+          Value: S3InterfaceEndpoint
