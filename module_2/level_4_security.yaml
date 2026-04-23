@@ -79,6 +79,9 @@ Resources:
       CidrBlock: 10.0.0.0/16
       EnableDnsSupport: true
       EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: WorkshopVPC
 
   WorkshopPrivateSubnet:
     Type: AWS::EC2::Subnet
@@ -86,11 +89,17 @@ Resources:
       VpcId: !Ref WorkshopVPC
       CidrBlock: 10.0.1.0/24
       AvailabilityZone: !Select [0, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: WorkshopPrivateSubnet
 
   WorkshopPrivateRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId: !Ref WorkshopVPC
+      Tags:
+        - Key: Name
+          Value: WorkshopPrivateRouteTable
 
   WorkshopPrivateSubnetRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -106,6 +115,9 @@ Resources:
     Properties:
       GroupDescription: EC2 Security Group
       VpcId: !Ref WorkshopVPC
+      Tags:
+        - Key: Name
+          Value: WorkshopEC2SecurityGroup
 
   EndpointSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -117,6 +129,9 @@ Resources:
           FromPort: 443
           ToPort: 443
           CidrIp: 10.0.0.0/16
+      Tags:
+        - Key: Name
+          Value: EndpointSecurityGroup
 
   # -----------------------------
   # EC2 INSTANCE
@@ -158,9 +173,9 @@ Resources:
             Resource:
               - !Sub "${UnaccessibleS3Bucket.Arn}"
               - !Sub "${UnaccessibleS3Bucket.Arn}/*"
-        Tags:
-          - Key: Name
-            Value: S3GatewayEndpoint
+      Tags:
+        - Key: Name
+          Value: S3GatewayEndpoint
 
   # -----------------------------
   # S3 INTERFACE ENDPOINT (LAB REQUIREMENT)
@@ -171,6 +186,7 @@ Resources:
       VpcId: !Ref WorkshopVPC
       ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
       VpcEndpointType: Interface
+      PrivateDnsEnabled: false
       SubnetIds:
         - !Ref WorkshopPrivateSubnet
       SecurityGroupIds:
@@ -178,8 +194,9 @@ Resources:
       Tags:
         - Key: Name
           Value: S3InterfaceEndpoint
+
   # -----------------------------
-  # 🔴 REQUIRED FOR SESSION MANAGER
+  # REQUIRED FOR SESSION MANAGER
   # -----------------------------
   SSMEndpoint:
     Type: AWS::EC2::VPCEndpoint
@@ -187,6 +204,7 @@ Resources:
       VpcId: !Ref WorkshopVPC
       ServiceName: !Sub "com.amazonaws.${AWS::Region}.ssm"
       VpcEndpointType: Interface
+      PrivateDnsEnabled: true
       SubnetIds:
         - !Ref WorkshopPrivateSubnet
       SecurityGroupIds:
@@ -201,6 +219,7 @@ Resources:
       VpcId: !Ref WorkshopVPC
       ServiceName: !Sub "com.amazonaws.${AWS::Region}.ec2messages"
       VpcEndpointType: Interface
+      PrivateDnsEnabled: true
       SubnetIds:
         - !Ref WorkshopPrivateSubnet
       SecurityGroupIds:
@@ -215,6 +234,7 @@ Resources:
       VpcId: !Ref WorkshopVPC
       ServiceName: !Sub "com.amazonaws.${AWS::Region}.ssmmessages"
       VpcEndpointType: Interface
+      PrivateDnsEnabled: true
       SubnetIds:
         - !Ref WorkshopPrivateSubnet
       SecurityGroupIds:
