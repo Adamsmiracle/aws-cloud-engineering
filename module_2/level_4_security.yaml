@@ -134,7 +134,6 @@ Resources:
 
   S3GatewayEndpoint:
     Type: AWS::EC2::VPCEndpoint
-    Name: Test-gateway-endpoint
     Properties:
       VpcId: !Ref WorkshopVPC
       ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
@@ -153,6 +152,9 @@ Resources:
             Resource:
               - !Sub "${UnaccessibleS3Bucket.Arn}"
               - !Sub "${UnaccessibleS3Bucket.Arn}/*"
+        Tags:
+          - key: Name
+            value: S3GatewayEndpoint
       RouteTableIds:
         - !Ref WorkshopPrivateRouteTable
 
@@ -175,7 +177,6 @@ Resources:
   # Interface endpoint for s3
   S3InterfaceEndpoint:
     Type: AWS::EC2::VPCEndpoint
-    Name: Test-interface-endpoint
     Properties:
       VpcId: !Ref WorkshopVPC
       ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
@@ -192,3 +193,6 @@ Resources:
             Principal: "*"
             Action: "s3:*"
             Resource: "*"
+      Tags:
+        - key: Name
+          value: S3InterfaceEndpoint
