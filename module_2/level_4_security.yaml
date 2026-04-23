@@ -1,9 +1,11 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Advanced Security Lab
+Description: Advanced Security Lab (Fixed with SSM Endpoints)
 
 Resources:
 
-  # Advanced Protection
+  # -----------------------------
+  # S3 BUCKETS + POLICY
+  # -----------------------------
   MyS3Bucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -24,7 +26,29 @@ Resources:
               - s3:PutObject
             Resource: !Sub "${MyS3Bucket.Arn}/*"
 
-  # IAM Role
+  AccessibleS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AWS::StackName}-accessible-bucket"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  UnaccessibleS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AWS::StackName}-unaccessible-bucket"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # -----------------------------
+  # IAM ROLE
+  # -----------------------------
   WorkshopEC2InstanceRole:
     Type: AWS::IAM::Role
     Properties:
@@ -33,61 +57,12 @@ Resources:
         Statement:
           - Effect: Allow
             Principal:
-              Service: "ec2.amazonaws.com"
+              Service: ec2.amazonaws.com
             Action:
               - sts:AssumeRole
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonSSMFullAccess
-        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
         - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
-
-  # VPC
-  WorkshopVPC:
-    Type: AWS::EC2::VPC
-    Properties:
-      CidrBlock: 10.0.0.0/16
-      EnableDnsSupport: true
-      EnableDnsHostnames: true
-      Tags:
-        - Key: Name
-          Value: WorkshopVPC
-
-  # Private Subnet
-  WorkshopPrivateSubnet:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref WorkshopVPC
-      CidrBlock: 10.0.1.0/24
-      AvailabilityZone: !Select [ 0, !GetAZs '' ]
-      Tags:
-        - Key: Name
-          Value: WorkshopPrivateSubnet
-
-  # Route table for the private subnet
-  WorkshopPrivateRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref WorkshopVPC
-      Tags:
-        - Key: Name
-          Value: WorkshopPrivateRouteTable
-  
-  # Association of the private subnet with the route table
-  WorkshopPrivateSubnetRouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref WorkshopPrivateSubnet
-      RouteTableId: !Ref WorkshopPrivateRouteTable
-
-  # Security Group for EC2 Instance
-  WorkshopEC2SecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Security group for Workshop EC2 instance
-      VpcId: !Ref WorkshopVPC
-      Tags:
-        - Key: Name
-          Value: WorkshopEC2SecurityGroup
+        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
 
   WorkshopEC2InstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -95,6 +70,57 @@ Resources:
       Roles:
         - !Ref WorkshopEC2InstanceRole
 
+  # -----------------------------
+  # VPC + NETWORK
+  # -----------------------------
+  WorkshopVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+
+  WorkshopPrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref WorkshopVPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+
+  WorkshopPrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref WorkshopVPC
+
+  WorkshopPrivateSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref WorkshopPrivateSubnet
+      RouteTableId: !Ref WorkshopPrivateRouteTable
+
+  # -----------------------------
+  # SECURITY GROUPS
+  # -----------------------------
+  WorkshopEC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: EC2 Security Group
+      VpcId: !Ref WorkshopVPC
+
+  EndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Endpoint Security Group
+      VpcId: !Ref WorkshopVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 10.0.0.0/16
+
+  # -----------------------------
+  # EC2 INSTANCE
+  # -----------------------------
   WorkshopEC2Instance:
     Type: AWS::EC2::Instance
     Properties:
@@ -108,34 +134,17 @@ Resources:
         - Key: Name
           Value: WorkshopEC2Instance
 
-  # The Accessible bucket
-  AccessibleS3Bucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Sub "${AWS::StackName}-accessible-bucket"
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
-
-  # The Unaccessible bucket
-  UnaccessibleS3Bucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Sub "${AWS::StackName}-unaccessible-bucket"
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
-
+  # -----------------------------
+  # S3 GATEWAY ENDPOINT (LAB CORE)
+  # -----------------------------
   S3GatewayEndpoint:
     Type: AWS::EC2::VPCEndpoint
     Properties:
       VpcId: !Ref WorkshopVPC
       ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
       VpcEndpointType: Gateway
+      RouteTableIds:
+        - !Ref WorkshopPrivateRouteTable
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -149,28 +158,10 @@ Resources:
             Resource:
               - !Sub "${UnaccessibleS3Bucket.Arn}"
               - !Sub "${UnaccessibleS3Bucket.Arn}/*"
-      RouteTableIds:
-        - !Ref WorkshopPrivateRouteTable
-      Tags:
-        - Key: Name
-          Value: S3GatewayEndpoint
 
-  # Security for the interface endpoint
-  EndpointSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Security group for S3 interface endpoint
-      VpcId: !Ref WorkshopVPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: 10.0.0.0/16
-      Tags:
-        - Key: Name
-          Value: EndpointSecurityGroup
-
-  # Interface endpoint for s3
+  # -----------------------------
+  # S3 INTERFACE ENDPOINT (LAB REQUIREMENT)
+  # -----------------------------
   S3InterfaceEndpoint:
     Type: AWS::EC2::VPCEndpoint
     Properties:
@@ -181,13 +172,39 @@ Resources:
         - !Ref WorkshopPrivateSubnet
       SecurityGroupIds:
         - !Ref EndpointSecurityGroup
-      PolicyDocument:
-        Version: "2008-10-17"
-        Statement:
-          - Effect: Allow
-            Principal: "*"
-            Action: "s3:*"
-            Resource: "*"
-      Tags:
-        - Key: Name
-          Value: S3InterfaceEndpoint
+
+  # -----------------------------
+  # 🔴 REQUIRED FOR SESSION MANAGER
+  # -----------------------------
+  SSMEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref WorkshopVPC
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ssm"
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref WorkshopPrivateSubnet
+      SecurityGroupIds:
+        - !Ref EndpointSecurityGroup
+
+  EC2MessagesEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref WorkshopVPC
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ec2messages"
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref WorkshopPrivateSubnet
+      SecurityGroupIds:
+        - !Ref EndpointSecurityGroup
+
+  SSMMessagesEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref WorkshopVPC
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ssmmessages"
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref WorkshopPrivateSubnet
+      SecurityGroupIds:
+        - !Ref EndpointSecurityGroup
