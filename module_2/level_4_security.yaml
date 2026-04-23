@@ -176,7 +176,6 @@ Resources:
       VpcId: !Ref WorkshopVPC
       ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
       VpcEndpointType: Interface
-      EnableDnsNames: false
       SubnetIds:
         - !Ref WorkshopPrivateSubnet
       SecurityGroupIds:
