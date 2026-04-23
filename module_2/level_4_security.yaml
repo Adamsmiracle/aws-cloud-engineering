@@ -158,6 +158,9 @@ Resources:
             Resource:
               - !Sub "${UnaccessibleS3Bucket.Arn}"
               - !Sub "${UnaccessibleS3Bucket.Arn}/*"
+        Tags:
+          - Key: Name
+            Value: S3GatewayEndpoint
 
   # -----------------------------
   # S3 INTERFACE ENDPOINT (LAB REQUIREMENT)
@@ -172,7 +175,9 @@ Resources:
         - !Ref WorkshopPrivateSubnet
       SecurityGroupIds:
         - !Ref EndpointSecurityGroup
-
+      Tags:
+        - Key: Name
+          Value: S3InterfaceEndpoint
   # -----------------------------
   # 🔴 REQUIRED FOR SESSION MANAGER
   # -----------------------------
@@ -186,6 +191,9 @@ Resources:
         - !Ref WorkshopPrivateSubnet
       SecurityGroupIds:
         - !Ref EndpointSecurityGroup
+      Tags:
+        - Key: Name
+          Value: SSMEndpoint
 
   EC2MessagesEndpoint:
     Type: AWS::EC2::VPCEndpoint
@@ -197,6 +205,9 @@ Resources:
         - !Ref WorkshopPrivateSubnet
       SecurityGroupIds:
         - !Ref EndpointSecurityGroup
+      Tags:
+        - Key: Name
+          Value: EC2MessagesEndpoint
 
   SSMMessagesEndpoint:
     Type: AWS::EC2::VPCEndpoint
@@ -208,3 +219,6 @@ Resources:
         - !Ref WorkshopPrivateSubnet
       SecurityGroupIds:
         - !Ref EndpointSecurityGroup
+      Tags:
+        - Key: Name
+          Value: SSMMessagesEndpoint
