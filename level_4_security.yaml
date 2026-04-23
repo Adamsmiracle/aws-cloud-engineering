@@ -1,0 +1,194 @@
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Advanced Security Lab
+
+
+
+Resources:
+
+  # Advanced Protection
+  MyS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AWS::StackName}-bucket-with-bucket-policy"
+
+
+  MyBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref MyS3Bucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowUserToPutObjectOnly
+            Effect: Allow
+            Principal:
+              AWS: arn:aws:iam::${AWS::AccountId}:user/ec2-user1
+            Action:
+              - s3:PutObject
+            Resource: !Sub "${MyS3Bucket.Arn}/*"
+
+
+
+
+
+  # vpc
+
+  WorkshopEC2InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - sts:AssumeRole
+            Principal:
+              Service: "ec2.amazonaws.com"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMFullAccess
+        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+
+
+
+  # Vpc
+  WorkshopVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - key: Name
+          value: WorkshopVPC
+
+  # Private Subnet
+  WorkshopPrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref WorkshopVPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      Tags:
+        - key: Name
+          value: WorkshopPrivateSubnet
+
+  # Route table for the private subnet
+  WorkshopPrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref WorkshopVPC
+      Tags:
+        - key: Name
+          value: WorkshopPrivateRouteTable
+  
+  # Association of the private subnet with the route table
+  WorkshopPrivateSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref WorkshopPrivateSubnet
+      RouteTableId: !Ref WorkshopPrivateRouteTable
+
+
+  WorkshopEC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref WorkshopEC2InstanceRole
+
+
+  WorkshopEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0a0823e4ea064404d
+      InstanceType: t2.micro
+      SubnetId: !Ref WorkshopPrivateSubnet
+      IamInstanceProfile: !Ref WorkshopEC2InstanceProfile
+      Tags:
+        - key: Name
+          Value: WorkshopEC2Instance
+
+
+  # The Accessible bucket
+  AccessibleS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AWS::StackName}-accessible-bucket"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # The Unaccessible bucket
+  UnaccessibleS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AWS::StackName}-unaccessible-bucket"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+
+  S3GatewayEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Name: Test-gateway-endpoint
+    Properties:
+      VpcId: !Ref WorkshopVPC
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
+      VpcEndpointType: Gateway
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action: "s3:*"
+            Resource: "*"
+
+          - Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !Sub "${UnaccessibleS3Bucket.Arn}"
+              - !Sub "${UnaccessibleS3Bucket.Arn}/*"
+      RouteTableIds:
+        - !Ref WorkshopPrivateRouteTable
+
+    
+    # Security for the interface endpoint
+  EndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for S3 interface endpoint
+      VpcId: !Ref WorkshopVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+      Tags:
+        - key: Name
+          value: EndpointSecurityGroup
+
+
+  # Interface endpoint for s3
+  S3InterfaceEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Name: Test-interface-endpoint
+    Properties:
+      VpcId: !Ref WorkshopVPC
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
+      VpcEndpointType: Interface
+      EnableDnsNames: true
+      SubnetIds:
+        - !Ref WorkshopPrivateSubnet
+      SecurityGroupIds:
+        - !Ref EndpointSecurityGroup
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action: "s3:*"
+            Resource: "*"
