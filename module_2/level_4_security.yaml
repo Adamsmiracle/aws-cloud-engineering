@@ -85,8 +85,6 @@ Resources:
 
   WorkshopPrivateSubnet:
     Type: AWS::EC2::Subnet
-    EnableDnsSupport: true
-    EnableDnsHostnames: true
     Properties:
       VpcId: !Ref WorkshopVPC
       CidrBlock: 10.0.1.0/24
