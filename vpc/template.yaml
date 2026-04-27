@@ -282,7 +282,7 @@ Resources:
       SecurityGroupEgress:
         - IpProtocol: "-1"
           CidrIp: 0.0.0.0/0
-          Description: Allow all inbound traffic
+          Description: Allow all Outbound traffic
       Tags:
         - Key: Name
           Value: !Sub "${EnvironmentName}-web-tier-sg"
@@ -365,7 +365,7 @@ Resources:
               <h1>&#x1F30D; HA VPC Lab</h1>
               <div class="badge">Web Tier — Public Instance</div>
               <div class="info">
-                <div><span class="label">Full Name:</span> Your Full Name Here</div>
+                <div><span class="label">Full Name:</span>Adams Miracle</div>
                 <div><span class="label">Lab Name:</span> Highly Available Multi-AZ VPC</div>
                 <div><span class="label">Instance:</span> Web-A</div>
                 <div><span class="label">Availability Zone:</span> $AZ</div>
@@ -392,7 +392,7 @@ Resources:
         - !Ref WebTierSG
       UserData:
         Fn::Base64: !Sub |
-           #!/bin/bash
+          #!/bin/bash
           set -e
           dnf update -y
           dnf install -y httpd
@@ -433,7 +433,7 @@ Resources:
               <h1>&#x1F30D; HA VPC Lab</h1>
               <div class="badge">Web Tier — Public Instance</div>
               <div class="info">
-                <div><span class="label">Full Name:</span> Your Full Name Here</div>
+                <div><span class="label">Full Name:</span>Adams Miracle</div>
                 <div><span class="label">Lab Name:</span> Highly Available Multi-AZ VPC</div>
                 <div><span class="label">Instance:</span> Web-B</div>
                 <div><span class="label">Availability Zone:</span> $AZ</div>
@@ -460,12 +460,6 @@ Resources:
       IamInstanceProfile: !Ref EC2InstanceProfile
       SecurityGroupIds:
         - !Ref AppTierSG
-      UserData:
-        Fn::Base64: !Sub |
-          #!/bin/bash
-          systemctl enable amazon-ssm-agent
-          systemctl start amazon-ssm-agent
-
       Tags: 
         - Key: Name
           Value: !Sub "${EnvironmentName}-app-ec2-a"
@@ -481,16 +475,9 @@ Resources:
       IamInstanceProfile: !Ref EC2InstanceProfile
       SecurityGroupIds:
         - !Ref AppTierSG
-      UserData:
-        Fn::Base64: !Sub |
-          #!/bin/bash
-          systemctl enable amazon-ssm-agent
-          systemctl start amazon-ssm-agent
-
       Tags:
         - Key: Name
           Value: !Sub "${EnvironmentName}-app-ec2-b" 
-
 
 # =========================================================
 # OUTPUTS
