@@ -114,6 +114,7 @@ Resources:
         Password: "{{resolve:secretsmanager:IAMLabTemporaryPassword:SecretString:password}}"
         PasswordResetRequired: true
 
+
   # EC2User22:
   #   Type: "AWS::IAM::User"
   #   DependsOn: IAMSecretpassword
@@ -138,6 +139,7 @@ Resources:
         Password: "{{resolve:secretsmanager:IAMLabTemporaryPassword:SecretString:password}}"
         PasswordResetRequired: true
 
+
   S3User:
     Type: "AWS::IAM::User"
     DependsOn: IAMSecretpassword
@@ -149,6 +151,7 @@ Resources:
         Password: "{{resolve:secretsmanager:IAMLabTemporaryPassword:SecretString:password}}"
         PasswordResetRequired: true
 
+
 Outputs:
   SecretArn:
     Description: "ARN of the generated secret password"
@@ -157,3 +160,4 @@ Outputs:
   ConsoleLoginURL:
     Description: "AWS Console sign-in URL"
     Value: !Sub "https://${AWS::AccountId}.signin.aws.amazon.com/console"
+
