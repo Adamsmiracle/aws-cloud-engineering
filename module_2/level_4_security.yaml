@@ -61,7 +61,7 @@ Resources:
             Action:
               - sts:AssumeRole
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/AmazonSSMFullAccess
         - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
 
   WorkshopEC2InstanceProfile:
@@ -150,7 +150,7 @@ Resources:
           Value: WorkshopEC2Instance
 
   # -----------------------------
-  # S3 GATEWAY ENDPOINT (LAB CORE)
+  # S3 GATEWAY ENDPOINT
   # -----------------------------
   S3GatewayEndpoint:
     Type: AWS::EC2::VPCEndpoint
@@ -178,7 +178,7 @@ Resources:
           Value: S3GatewayEndpoint
 
   # -----------------------------
-  # S3 INTERFACE ENDPOINT (LAB REQUIREMENT)
+  # S3 INTERFACE ENDPOINT
   # -----------------------------
   S3InterfaceEndpoint:
     Type: AWS::EC2::VPCEndpoint
