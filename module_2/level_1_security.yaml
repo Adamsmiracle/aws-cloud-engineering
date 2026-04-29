@@ -9,23 +9,6 @@ Parameters:
 
 Resources:
   # ======================
-  # Security Group
-  # ======================
-  Level1SecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: "Security group for Level 1 Security Lab"
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          CidrIp: "0.0.0.0/0"
-          Description: "Allow HTTP traffic"
-      Tags:
-        - Key: Environment
-          Value: !Ref EnvironmentName
-
-  # ======================
   # IAM Roles (No Custom Names)
   # ======================
   EC2S3ReadRole:
@@ -43,12 +26,6 @@ Resources:
       Tags:
         - Key: Environment
           Value: !Ref EnvironmentName
-
-  EC2InstanceProfile:
-    Type: AWS::IAM::InstanceProfile
-    Properties:
-      Roles:
-        - !Ref EC2S3ReadRole
 
   LambdaS3ReadRole:
     Type: AWS::IAM::Role
@@ -84,51 +61,11 @@ Resources:
           Value: !Ref EnvironmentName
 
 
-  ECSTaskRole:
-    Type: AWS::IAM::Role
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
     Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ecs-tasks.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
-      Tags:
-        - Key: Environment
-          Value: !Ref EnvironmentName
-
-  KeyAdminRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
-            Action: sts:AssumeRole
-      Tags:
-        - Key: Environment
-          Value: !Ref EnvironmentName
-
-  AppRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-                - ecs-tasks.amazonaws.com
-            Action: sts:AssumeRole
-      Tags:
-        - Key: Environment
-          Value: !Ref EnvironmentName
+      Roles:
+        - !Ref EC2S3ReadRole
 
   # ======================
   # EC2 Instance
@@ -139,8 +76,6 @@ Resources:
       ImageId: !Sub "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2}}"
       InstanceType: t3.micro
       IamInstanceProfile: !Ref EC2InstanceProfile
-      SecurityGroupIds:
-        - !Ref Level1SecurityGroup
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
@@ -176,47 +111,6 @@ Resources:
         - Key: Environment
           Value: !Ref EnvironmentName
 
-  # ======================
-  # KMS Key
-  # ======================
-  ProductionKMSKey:
-    Type: AWS::KMS::Key
-    Properties:
-      Description: "KMS Key for Parameter Store and Secrets Manager"
-      EnableKeyRotation: true
-      KeySpec: SYMMETRIC_DEFAULT
-      KeyUsage: ENCRYPT_DECRYPT
-      KeyPolicy:
-        Version: "2012-10-17"
-        Statement:
-          - Sid: Enable IAM User Permissions
-            Effect: Allow
-            Principal:
-              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
-            Action: "kms:*"
-            Resource: "*"
-          - Sid: Allow use of the key
-            Effect: Allow
-            Principal:
-              AWS:
-                - !GetAtt KeyAdminRole.Arn
-                - !GetAtt AppRole.Arn
-            Action:
-              - kms:Encrypt
-              - kms:Decrypt
-              - kms:ReEncrypt*
-              - kms:GenerateDataKey*
-              - kms:DescribeKey
-            Resource: "*"
-      Tags:
-        - Key: Environment
-          Value: !Ref EnvironmentName
-
-  ProductionKMSKeyAlias:
-    Type: AWS::KMS::Alias
-    Properties:
-      AliasName: !Sub "alias/${AWS::StackName}-kms-key"
-      TargetKeyId: !Ref ProductionKMSKey
 
   # ======================
   # SSM Parameter
@@ -225,7 +119,7 @@ Resources:
     Type: AWS::SSM::Parameter
     Properties:
       Name: !Sub "/${AWS::StackName}/database/keys"
-      Type: String
+      Type: SecureString
       Value: "initial-demo-value-change-me"
       Description: "Non-secret database metadata for production environment"
       Tags:
@@ -237,23 +131,16 @@ Resources:
   ProductionAppSecret:
     Type: AWS::SecretsManager::Secret
     Properties:
-      Name: !Sub "${AWS::StackName}-app-secret"
+      Name: !Sub "${AWS::StackName}/appSecret"
       Description: "Application secrets for production"
-      KmsKeyId: !Ref ProductionKMSKey
-      SecretString: !Sub |
-        {
-          "MyPassword": "demo-password-change-me"
-        }
+      GenerateSecretString:
+        SecretStringTemplate: '{"MyPassword": "Placeholder"}'
+        GenerateStringKey: "MyPassword"
       Tags:
         - Key: Environment
           Value: !Ref EnvironmentName
 
 Outputs:
-  SecurityGroupId:
-    Description: "ID of the security group"
-    Value: !Ref Level1SecurityGroup
-    Export:
-      Name: !Sub "${AWS::StackName}-SecurityGroup"
 
   EC2InstanceId:
     Description: "ID of the EC2 instance"
@@ -266,9 +153,3 @@ Outputs:
     Value: !GetAtt MyLambdaFunction.Arn
     Export:
       Name: !Sub "${AWS::StackName}-LambdaFunction"
-
-  KMSKeyId:
-    Description: "ID of the KMS key"
-    Value: !Ref ProductionKMSKey
-    Export:
-      Name: !Sub "${AWS::StackName}-KMSKey"
