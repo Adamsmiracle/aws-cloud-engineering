@@ -111,6 +111,46 @@ Resources:
         - Key: Environment
           Value: !Ref EnvironmentName
 
+# ======================
+# kms
+# ======================
+  ProductionParameterKMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: "KMS key for SSM Parameter Store SecureString encryption"
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+
+          # FULL ADMIN CONTROL (ROOT ACCOUNT)
+          - Sid: EnableRootPermissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: "kms:*"
+            Resource: "*"
+
+          # ALLOW EC2 ROLE (optional for retrieval testing)
+          - Sid: AllowEC2RoleUse
+            Effect: Allow
+            Principal:
+              AWS: !GetAtt EC2S3ReadRole.Arn
+            Action:
+              - kms:Decrypt
+              - kms:Encrypt
+              - kms:DescribeKey
+              - kms:GenerateDataKey*
+            Resource: "*"
+  
+
+  ProductionParameterKMSAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/production-encrypted-key
+      TargetKeyId: !Ref ProductionParameterKMSKey
+
+
 
   # ======================
   # SSM Parameter
@@ -122,6 +162,7 @@ Resources:
       Type: String
       Value: "initial-demo-value-change-me"
       Description: "Non-secret database metadata for production environment"
+      KeyId: !Ref ProductionParameterKMSKey
 
 
   # ======================
