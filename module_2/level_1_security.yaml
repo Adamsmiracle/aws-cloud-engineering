@@ -162,8 +162,6 @@ Resources:
       Type: String
       Value: "initial-demo-value-change-me"
       Description: "Non-secret database metadata for production environment"
-      KeyId: !Ref ProductionParameterKMSKey
-
 
   # ======================
   # Secrets Manager
