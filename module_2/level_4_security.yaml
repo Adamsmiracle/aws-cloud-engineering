@@ -3,13 +3,24 @@ Description: Advanced Security Lab (Fixed with SSM Endpoints)
 
 Resources:
 
+
+
+
+# -----------------------------
+# IAM USER
+# -----------------------------
+  Week2IAMUser:
+  Type: AWS::IAM::User
+  Properties:
+    UserName: !Sub "${AWS::StackName}-week2-iamuser"
+
   # -----------------------------
   # S3 BUCKETS + POLICY
   # -----------------------------
   MyS3Bucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub "${AWS::StackName}-bucket-with-bucket-policy"
+      BucketName: !Sub "${AWS::StackName}-week2bucket"
 
   MyBucketPolicy:
     Type: AWS::S3::BucketPolicy
@@ -21,7 +32,7 @@ Resources:
           - Sid: AllowUserToPutObjectOnly
             Effect: Allow
             Principal:
-              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:user/ec2-user1"
+              AWS: !GetAtt Week2IAMUser.Arn
             Action:
               - s3:PutObject
             Resource: !Sub "${MyS3Bucket.Arn}/*"
