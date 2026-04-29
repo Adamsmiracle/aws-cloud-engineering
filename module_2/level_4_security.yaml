@@ -10,9 +10,9 @@ Resources:
 # IAM USER
 # -----------------------------
   Week2IAMUser:
-  Type: AWS::IAM::User
-  Properties:
-    UserName: !Sub "${AWS::StackName}-week2-iamuser"
+    Type: AWS::IAM::User
+    Properties:
+      UserName: !Sub "${AWS::StackName}-week2-iamuser"
 
   # -----------------------------
   # S3 BUCKETS + POLICY
