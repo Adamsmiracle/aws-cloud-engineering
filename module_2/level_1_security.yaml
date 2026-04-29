@@ -122,8 +122,7 @@ Resources:
       Type: SecureString
       Value: "initial-demo-value-change-me"
       Description: "Non-secret database metadata for production environment"
-      Tags:
-        Environment: !Ref EnvironmentName
+
 
   # ======================
   # Secrets Manager
