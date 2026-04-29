@@ -44,7 +44,7 @@ Resources:
           Value: !Ref EnvironmentName
 
 
-  ECSTaskExecutionRole:
+  ECSRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -55,7 +55,7 @@ Resources:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
       Tags:
         - Key: Environment
           Value: !Ref EnvironmentName
