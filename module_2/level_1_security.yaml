@@ -119,7 +119,7 @@ Resources:
     Type: AWS::SSM::Parameter
     Properties:
       Name: !Sub "/${AWS::StackName}/database/keys"
-      Type: SecureString
+      Type: String
       Value: "initial-demo-value-change-me"
       Description: "Non-secret database metadata for production environment"
 
