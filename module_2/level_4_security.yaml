@@ -202,6 +202,19 @@ Resources:
         - !Ref WorkshopPrivateSubnet
       SecurityGroupIds:
         - !Ref EndpointSecurityGroup
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action: "s3:*"
+            Resource: "*"
+          - Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !Sub "${UnaccessibleS3Bucket.Arn}"
+              - !Sub "${UnaccessibleS3Bucket.Arn}/*"
       Tags:
         - Key: Name
           Value: S3InterfaceEndpoint
