@@ -127,6 +127,7 @@ Resources:
   #       PasswordResetRequired: true
 
 
+
   EC2User2:
     Type: "AWS::IAM::User"
     DependsOn: IAMSecretpassword
