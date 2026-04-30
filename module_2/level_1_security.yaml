@@ -183,11 +183,11 @@ Resources:
           #  Resource: "*"
   
 
-  ProductionParameterKMSAlias:
+  practiceParameterKMSAlias:
     Type: AWS::KMS::Alias
     Properties:
       AliasName: alias/practice-key-creation
-      TargetKeyId: !Ref ProductionParameterKMSKey
+      TargetKeyId: !Ref practiceParameterKMSKey
 
 
 
