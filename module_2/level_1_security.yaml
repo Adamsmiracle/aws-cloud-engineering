@@ -8,108 +8,108 @@ Parameters:
     Description: Environment name for resource tagging
 
 Resources:
-  # ======================
-  # IAM Roles (No Custom Names)
-  # ======================
-  EC2S3ReadRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ec2.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
-      Tags:
-        - Key: Environment
-          Value: !Ref EnvironmentName
+  # # ======================
+  # # IAM Roles (No Custom Names)
+  # # ======================
+  # EC2S3ReadRole:
+  #   Type: AWS::IAM::Role
+  #   Properties:
+  #     AssumeRolePolicyDocument:
+  #       Version: "2012-10-17"
+  #       Statement:
+  #         - Effect: Allow
+  #           Principal:
+  #             Service: ec2.amazonaws.com
+  #           Action: sts:AssumeRole
+  #     ManagedPolicyArns:
+  #       - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+  #     Tags:
+  #       - Key: Environment
+  #         Value: !Ref EnvironmentName
 
-  LambdaS3ReadRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
-      Tags:
-        - Key: Environment
-          Value: !Ref EnvironmentName
-
-
-  ECSRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ecs-tasks.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
-      Tags:
-        - Key: Environment
-          Value: !Ref EnvironmentName
+  # LambdaS3ReadRole:
+  #   Type: AWS::IAM::Role
+  #   Properties:
+  #     AssumeRolePolicyDocument:
+  #       Version: "2012-10-17"
+  #       Statement:
+  #         - Effect: Allow
+  #           Principal:
+  #             Service: lambda.amazonaws.com
+  #           Action: sts:AssumeRole
+  #     ManagedPolicyArns:
+  #       - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+  #     Tags:
+  #       - Key: Environment
+  #         Value: !Ref EnvironmentName
 
 
-  EC2InstanceProfile:
-    Type: AWS::IAM::InstanceProfile
-    Properties:
-      Roles:
-        - !Ref EC2S3ReadRole
+  # ECSRole:
+  #   Type: AWS::IAM::Role
+  #   Properties:
+  #     AssumeRolePolicyDocument:
+  #       Version: "2012-10-17"
+  #       Statement:
+  #         - Effect: Allow
+  #           Principal:
+  #             Service: ecs-tasks.amazonaws.com
+  #           Action: sts:AssumeRole
+  #     ManagedPolicyArns:
+  #       - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+  #     Tags:
+  #       - Key: Environment
+  #         Value: !Ref EnvironmentName
 
-  # ======================
-  # EC2 Instance
-  # ======================
-  MyEc2Instance:
-    Type: AWS::EC2::Instance
-    Properties:
-      ImageId: !Sub "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2}}"
-      InstanceType: t3.micro
-      IamInstanceProfile: !Ref EC2InstanceProfile
-      UserData:
-        Fn::Base64: !Sub |
-          #!/bin/bash
-          yum update -y
-          echo "Instance launched successfully" > /var/log/user-data.log
-      Tags:
-        - Key: Name
-          Value: !Sub "${AWS::StackName}-ec2-instance"
-        - Key: Environment
-          Value: !Ref EnvironmentName
 
-  # ======================
-  # Lambda Function
-  # ======================
-  MyLambdaFunction:
-    Type: AWS::Lambda::Function
-    Properties:
-      FunctionName: !Sub "${AWS::StackName}-lambda-function"
-      Runtime: python3.12
-      Role: !GetAtt LambdaS3ReadRole.Arn
-      Handler: index.handler
-      Timeout: 30
-      MemorySize: 128
-      Code:
-        ZipFile: |
-          import json
-          def handler(event, context):
-              return {
-                  'statusCode': 200,
-                  'body': json.dumps('Hello from Lambda!')
-              }
-      Tags:
-        - Key: Environment
-          Value: !Ref EnvironmentName
+  # EC2InstanceProfile:
+  #   Type: AWS::IAM::InstanceProfile
+  #   Properties:
+  #     Roles:
+  #       - !Ref EC2S3ReadRole
+
+  # # ======================
+  # # EC2 Instance
+  # # ======================
+  # MyEc2Instance:
+  #   Type: AWS::EC2::Instance
+  #   Properties:
+  #     ImageId: !Sub "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2}}"
+  #     InstanceType: t3.micro
+  #     IamInstanceProfile: !Ref EC2InstanceProfile
+  #     UserData:
+  #       Fn::Base64: !Sub |
+  #         #!/bin/bash
+  #         yum update -y
+  #         echo "Instance launched successfully" > /var/log/user-data.log
+  #     Tags:
+  #       - Key: Name
+  #         Value: !Sub "${AWS::StackName}-ec2-instance"
+  #       - Key: Environment
+  #         Value: !Ref EnvironmentName
+
+  # # ======================
+  # # Lambda Function
+  # # ======================
+  # MyLambdaFunction:
+  #   Type: AWS::Lambda::Function
+  #   Properties:
+  #     FunctionName: !Sub "${AWS::StackName}-lambda-function"
+  #     Runtime: python3.12
+  #     Role: !GetAtt LambdaS3ReadRole.Arn
+  #     Handler: index.handler
+  #     Timeout: 30
+  #     MemorySize: 128
+  #     Code:
+  #       ZipFile: |
+  #         import json
+  #         def handler(event, context):
+  #             return {
+  #                 'statusCode': 200,
+  #                 'body': json.dumps('Hello from Lambda!')
+  #             }
+  #     Tags:
+  #       - Key: Environment
+  #         Value: !Ref EnvironmentName
 
 # ======================
 # kms
