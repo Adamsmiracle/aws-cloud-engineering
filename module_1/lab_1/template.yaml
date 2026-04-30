@@ -115,16 +115,16 @@ Resources:
         PasswordResetRequired: true
 
 
-  EC2User22:
-    Type: "AWS::IAM::User"
-    DependsOn: IAMSecretpassword
-    Properties:
-      UserName: "ec2-user22"
-      Groups:
-        - !Ref EC2FullAccessGroup
-      LoginProfile:
-        Password: "{{resolve:secretsmanager:IAMLabTemporaryPassword:SecretString:password}}"
-        PasswordResetRequired: true
+  # EC2User22:
+  #   Type: "AWS::IAM::User"
+  #   DependsOn: IAMSecretpassword
+  #   Properties:
+  #     UserName: "ec2-user22"
+  #     Groups:
+  #       - !Ref EC2FullAccessGroup
+  #     LoginProfile:
+  #       Password: "{{resolve:secretsmanager:IAMLabTemporaryPassword:SecretString:password}}"
+  #       PasswordResetRequired: true
 
 
 
