@@ -132,16 +132,16 @@ Resources:
             Resource: "*"
 
           # ALLOW EC2 ROLE (optional for retrieval testing)
-          - Sid: AllowEC2RoleUse
-            Effect: Allow
-            Principal:
-              AWS: !GetAtt EC2S3ReadRole.Arn
-            Action:
-              - kms:Decrypt
-              - kms:Encrypt
-              - kms:DescribeKey
-              - kms:GenerateDataKey*
-            Resource: "*"
+          # - Sid: AllowEC2RoleUse
+          #   Effect: Allow
+          #   Principal:
+          #     AWS: !GetAtt EC2S3ReadRole.Arn
+          #   Action:
+          #     - kms:Decrypt
+          #     - kms:Encrypt
+          #     - kms:DescribeKey
+          #     - kms:GenerateDataKey*
+          #  Resource: "*"
   
 
   ProductionParameterKMSAlias:
