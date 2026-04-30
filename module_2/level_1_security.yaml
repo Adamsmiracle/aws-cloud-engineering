@@ -178,16 +178,16 @@ Resources:
         - Key: Environment
           Value: !Ref EnvironmentName
 
-Outputs:
+# Outputs:
 
-  EC2InstanceId:
-    Description: "ID of the EC2 instance"
-    Value: !Ref MyEc2Instance
-    Export:
-      Name: !Sub "${AWS::StackName}-EC2Instance"
+#   EC2InstanceId:
+#     Description: "ID of the EC2 instance"
+#     Value: !Ref MyEc2Instance
+#     Export:
+#       Name: !Sub "${AWS::StackName}-EC2Instance"
 
-  LambdaFunctionArn:
-    Description: "ARN of the Lambda function"
-    Value: !GetAtt MyLambdaFunction.Arn
-    Export:
-      Name: !Sub "${AWS::StackName}-LambdaFunction"
+#   LambdaFunctionArn:
+#     Description: "ARN of the Lambda function"
+#     Value: !GetAtt MyLambdaFunction.Arn
+#     Export:
+#       Name: !Sub "${AWS::StackName}-LambdaFunction"
