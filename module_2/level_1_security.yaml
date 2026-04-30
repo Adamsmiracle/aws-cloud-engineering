@@ -1,193 +1,193 @@
-AWSTemplateFormatVersion: "2010-09-09"
-Description: "Tighten your IAM Permissions - Working Version"
+# AWSTemplateFormatVersion: "2010-09-09"
+# Description: "Tighten your IAM Permissions - Working Version"
 
-Parameters:
-  EnvironmentName:
-    Type: String
-    Default: production
-    Description: Environment name for resource tagging
+# Parameters:
+#   EnvironmentName:
+#     Type: String
+#     Default: production
+#     Description: Environment name for resource tagging
 
-Resources:
-  # # ======================
-  # # IAM Roles (No Custom Names)
-  # # ======================
-  # EC2S3ReadRole:
-  #   Type: AWS::IAM::Role
-  #   Properties:
-  #     AssumeRolePolicyDocument:
-  #       Version: "2012-10-17"
-  #       Statement:
-  #         - Effect: Allow
-  #           Principal:
-  #             Service: ec2.amazonaws.com
-  #           Action: sts:AssumeRole
-  #     ManagedPolicyArns:
-  #       - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
-  #     Tags:
-  #       - Key: Environment
-  #         Value: !Ref EnvironmentName
+# Resources:
+#   # # ======================
+#   # # IAM Roles (No Custom Names)
+#   # # ======================
+#   # EC2S3ReadRole:
+#   #   Type: AWS::IAM::Role
+#   #   Properties:
+#   #     AssumeRolePolicyDocument:
+#   #       Version: "2012-10-17"
+#   #       Statement:
+#   #         - Effect: Allow
+#   #           Principal:
+#   #             Service: ec2.amazonaws.com
+#   #           Action: sts:AssumeRole
+#   #     ManagedPolicyArns:
+#   #       - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+#   #     Tags:
+#   #       - Key: Environment
+#   #         Value: !Ref EnvironmentName
 
-  # LambdaS3ReadRole:
-  #   Type: AWS::IAM::Role
-  #   Properties:
-  #     AssumeRolePolicyDocument:
-  #       Version: "2012-10-17"
-  #       Statement:
-  #         - Effect: Allow
-  #           Principal:
-  #             Service: lambda.amazonaws.com
-  #           Action: sts:AssumeRole
-  #     ManagedPolicyArns:
-  #       - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
-  #     Tags:
-  #       - Key: Environment
-  #         Value: !Ref EnvironmentName
-
-
-  # ECSRole:
-  #   Type: AWS::IAM::Role
-  #   Properties:
-  #     AssumeRolePolicyDocument:
-  #       Version: "2012-10-17"
-  #       Statement:
-  #         - Effect: Allow
-  #           Principal:
-  #             Service: ecs-tasks.amazonaws.com
-  #           Action: sts:AssumeRole
-  #     ManagedPolicyArns:
-  #       - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
-  #     Tags:
-  #       - Key: Environment
-  #         Value: !Ref EnvironmentName
+#   # LambdaS3ReadRole:
+#   #   Type: AWS::IAM::Role
+#   #   Properties:
+#   #     AssumeRolePolicyDocument:
+#   #       Version: "2012-10-17"
+#   #       Statement:
+#   #         - Effect: Allow
+#   #           Principal:
+#   #             Service: lambda.amazonaws.com
+#   #           Action: sts:AssumeRole
+#   #     ManagedPolicyArns:
+#   #       - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+#   #     Tags:
+#   #       - Key: Environment
+#   #         Value: !Ref EnvironmentName
 
 
-  # EC2InstanceProfile:
-  #   Type: AWS::IAM::InstanceProfile
-  #   Properties:
-  #     Roles:
-  #       - !Ref EC2S3ReadRole
+#   # ECSRole:
+#   #   Type: AWS::IAM::Role
+#   #   Properties:
+#   #     AssumeRolePolicyDocument:
+#   #       Version: "2012-10-17"
+#   #       Statement:
+#   #         - Effect: Allow
+#   #           Principal:
+#   #             Service: ecs-tasks.amazonaws.com
+#   #           Action: sts:AssumeRole
+#   #     ManagedPolicyArns:
+#   #       - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+#   #     Tags:
+#   #       - Key: Environment
+#   #         Value: !Ref EnvironmentName
 
-  # # ======================
-  # # EC2 Instance
-  # # ======================
-  # MyEc2Instance:
-  #   Type: AWS::EC2::Instance
-  #   Properties:
-  #     ImageId: !Sub "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2}}"
-  #     InstanceType: t3.micro
-  #     IamInstanceProfile: !Ref EC2InstanceProfile
-  #     UserData:
-  #       Fn::Base64: !Sub |
-  #         #!/bin/bash
-  #         yum update -y
-  #         echo "Instance launched successfully" > /var/log/user-data.log
-  #     Tags:
-  #       - Key: Name
-  #         Value: !Sub "${AWS::StackName}-ec2-instance"
-  #       - Key: Environment
-  #         Value: !Ref EnvironmentName
 
-  # # ======================
-  # # Lambda Function
-  # # ======================
-  # MyLambdaFunction:
-  #   Type: AWS::Lambda::Function
-  #   Properties:
-  #     FunctionName: !Sub "${AWS::StackName}-lambda-function"
-  #     Runtime: python3.12
-  #     Role: !GetAtt LambdaS3ReadRole.Arn
-  #     Handler: index.handler
-  #     Timeout: 30
-  #     MemorySize: 128
-  #     Code:
-  #       ZipFile: |
-  #         import json
-  #         def handler(event, context):
-  #             return {
-  #                 'statusCode': 200,
-  #                 'body': json.dumps('Hello from Lambda!')
-  #             }
-  #     Tags:
-  #       - Key: Environment
-  #         Value: !Ref EnvironmentName
+#   # EC2InstanceProfile:
+#   #   Type: AWS::IAM::InstanceProfile
+#   #   Properties:
+#   #     Roles:
+#   #       - !Ref EC2S3ReadRole
 
-# ======================
-# kms
-# ======================
-  ProductionParameterKMSKey:
-    Type: AWS::KMS::Key
-    Properties:
-      Description: "KMS key for SSM Parameter Store SecureString encryption"
-      EnableKeyRotation: true
-      KeyPolicy:
-        Version: "2012-10-17"
-        Statement:
+#   # # ======================
+#   # # EC2 Instance
+#   # # ======================
+#   # MyEc2Instance:
+#   #   Type: AWS::EC2::Instance
+#   #   Properties:
+#   #     ImageId: !Sub "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2}}"
+#   #     InstanceType: t3.micro
+#   #     IamInstanceProfile: !Ref EC2InstanceProfile
+#   #     UserData:
+#   #       Fn::Base64: !Sub |
+#   #         #!/bin/bash
+#   #         yum update -y
+#   #         echo "Instance launched successfully" > /var/log/user-data.log
+#   #     Tags:
+#   #       - Key: Name
+#   #         Value: !Sub "${AWS::StackName}-ec2-instance"
+#   #       - Key: Environment
+#   #         Value: !Ref EnvironmentName
 
-          # FULL ADMIN CONTROL (ROOT ACCOUNT)
-          - Sid: EnableRootPermissions
-            Effect: Allow
-            Principal:
-              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
-            Action: "kms:*"
-            Resource: "*"
+#   # # ======================
+#   # # Lambda Function
+#   # # ======================
+#   # MyLambdaFunction:
+#   #   Type: AWS::Lambda::Function
+#   #   Properties:
+#   #     FunctionName: !Sub "${AWS::StackName}-lambda-function"
+#   #     Runtime: python3.12
+#   #     Role: !GetAtt LambdaS3ReadRole.Arn
+#   #     Handler: index.handler
+#   #     Timeout: 30
+#   #     MemorySize: 128
+#   #     Code:
+#   #       ZipFile: |
+#   #         import json
+#   #         def handler(event, context):
+#   #             return {
+#   #                 'statusCode': 200,
+#   #                 'body': json.dumps('Hello from Lambda!')
+#   #             }
+#   #     Tags:
+#   #       - Key: Environment
+#   #         Value: !Ref EnvironmentName
 
-          # ALLOW EC2 ROLE (optional for retrieval testing)
-          # - Sid: AllowEC2RoleUse
-          #   Effect: Allow
-          #   Principal:
-          #     AWS: !GetAtt EC2S3ReadRole.Arn
-          #   Action:
-          #     - kms:Decrypt
-          #     - kms:Encrypt
-          #     - kms:DescribeKey
-          #     - kms:GenerateDataKey*
-          #  Resource: "*"
+# # ======================
+# # kms
+# # ======================
+#   ProductionParameterKMSKey:
+#     Type: AWS::KMS::Key
+#     Properties:
+#       Description: "KMS key for SSM Parameter Store SecureString encryption"
+#       EnableKeyRotation: true
+#       KeyPolicy:
+#         Version: "2012-10-17"
+#         Statement:
+
+#           # FULL ADMIN CONTROL (ROOT ACCOUNT)
+#           - Sid: EnableRootPermissions
+#             Effect: Allow
+#             Principal:
+#               AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+#             Action: "kms:*"
+#             Resource: "*"
+
+#           # ALLOW EC2 ROLE (optional for retrieval testing)
+#           # - Sid: AllowEC2RoleUse
+#           #   Effect: Allow
+#           #   Principal:
+#           #     AWS: !GetAtt EC2S3ReadRole.Arn
+#           #   Action:
+#           #     - kms:Decrypt
+#           #     - kms:Encrypt
+#           #     - kms:DescribeKey
+#           #     - kms:GenerateDataKey*
+#           #  Resource: "*"
   
 
-  ProductionParameterKMSAlias:
-    Type: AWS::KMS::Alias
-    Properties:
-      AliasName: alias/production-encrypted-key
-      TargetKeyId: !Ref ProductionParameterKMSKey
+#   ProductionParameterKMSAlias:
+#     Type: AWS::KMS::Alias
+#     Properties:
+#       AliasName: alias/production-encrypted-key
+#       TargetKeyId: !Ref ProductionParameterKMSKey
 
 
 
-  # ======================
-  # SSM Parameter
-  # ======================
-  ProductionDatabaseKeyParams:
-    Type: AWS::SSM::Parameter
-    Properties:
-      Name: !Sub "/${AWS::StackName}/database/keys"
-      Type: String
-      Value: "initial-demo-value-change-me"
-      Description: "Non-secret database metadata for production environment"
+#   # ======================
+#   # SSM Parameter
+#   # ======================
+#   ProductionDatabaseKeyParams:
+#     Type: AWS::SSM::Parameter
+#     Properties:
+#       Name: !Sub "/${AWS::StackName}/database/keys"
+#       Type: String
+#       Value: "initial-demo-value-change-me"
+#       Description: "Non-secret database metadata for production environment"
 
-  # ======================
-  # Secrets Manager
-  # ======================
-  ProductionAppSecret:
-    Type: AWS::SecretsManager::Secret
-    Properties:
-      Name: !Sub "${AWS::StackName}/appSecret"
-      Description: "Application secrets for production"
-      GenerateSecretString:
-        SecretStringTemplate: '{"MyPassword": "Placeholder"}'
-        GenerateStringKey: "MyPassword"
-      Tags:
-        - Key: Environment
-          Value: !Ref EnvironmentName
+#   # ======================
+#   # Secrets Manager
+#   # ======================
+#   ProductionAppSecret:
+#     Type: AWS::SecretsManager::Secret
+#     Properties:
+#       Name: !Sub "${AWS::StackName}/appSecret"
+#       Description: "Application secrets for production"
+#       GenerateSecretString:
+#         SecretStringTemplate: '{"MyPassword": "Placeholder"}'
+#         GenerateStringKey: "MyPassword"
+#       Tags:
+#         - Key: Environment
+#           Value: !Ref EnvironmentName
 
-# Outputs:
+# # Outputs:
 
-#   EC2InstanceId:
-#     Description: "ID of the EC2 instance"
-#     Value: !Ref MyEc2Instance
-#     Export:
-#       Name: !Sub "${AWS::StackName}-EC2Instance"
+# #   EC2InstanceId:
+# #     Description: "ID of the EC2 instance"
+# #     Value: !Ref MyEc2Instance
+# #     Export:
+# #       Name: !Sub "${AWS::StackName}-EC2Instance"
 
-#   LambdaFunctionArn:
-#     Description: "ARN of the Lambda function"
-#     Value: !GetAtt MyLambdaFunction.Arn
-#     Export:
-#       Name: !Sub "${AWS::StackName}-LambdaFunction"
+# #   LambdaFunctionArn:
+# #     Description: "ARN of the Lambda function"
+# #     Value: !GetAtt MyLambdaFunction.Arn
+# #     Export:
+# #       Name: !Sub "${AWS::StackName}-LambdaFunction"
