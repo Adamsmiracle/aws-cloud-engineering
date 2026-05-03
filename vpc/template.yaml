@@ -330,14 +330,6 @@ Resources:
           systemctl enable httpd
           systemctl start httpd
  
-          # Fetch AZ from instance metadata (IMDSv2)
-          TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" \
-            -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
-          AZ=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" \
-            http://169.254.169.254/latest/meta-data/placement/availability-zone)
-          LOCAL_IP=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" \
-            http://169.254.169.254/latest/meta-data/local-ipv4)
- 
           cat > /var/www/html/index.html <<EOF
           <!DOCTYPE html>
           <html lang="en">
@@ -398,14 +390,7 @@ Resources:
           dnf install -y httpd
           systemctl enable httpd
           systemctl start httpd
- 
-          TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" \
-            -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
-          AZ=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" \
-            http://169.254.169.254/latest/meta-data/placement/availability-zone)
-          LOCAL_IP=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" \
-            http://169.254.169.254/latest/meta-data/local-ipv4)
- 
+
           cat > /var/www/html/index.html <<EOF
           <!DOCTYPE html>
           <html lang="en">
