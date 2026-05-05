@@ -292,8 +292,8 @@ Resources:
       MetricName: CPUUtilization
       Statistic: Average
       Period: 60
-      EvaluationPeriods: 2
-      Threshold: 10
+      EvaluationPeriods: 1
+      Threshold: 0.1
       ComparisonOperator: LessThanThreshold
       Dimensions:
         - Name: AutoScalingGroupName
@@ -309,8 +309,8 @@ Resources:
       MetricName: CPUUtilization
       Statistic: Average
       Period: 60
-      EvaluationPeriods: 2
-      Threshold: 0.1
+      EvaluationPeriods: 1
+      Threshold: 1
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
         - Name: AutoScalingGroupName
