@@ -6,16 +6,16 @@ Resources:
   # ================
   # SECRETS MANAGER
   # ================
-  IAMSecretpassword:
-    Type: "AWS::SecretsManager::Secret"
-    Properties:
-      Name: "IAMLabTemporaryPassword"
-      GenerateSecretString:
-        SecretStringTemplate: '{"username": "iam-users"}'
-        GenerateStringKey: "password"
-        PasswordLength: 12
-        ExcludePunctuation: false
-        RequireEachIncludedType: true
+  # IAMSecretpassword:
+  #   Type: "AWS::SecretsManager::Secret"
+  #   Properties:
+  #     Name: "IAMLabTemporaryPassword"
+  #     GenerateSecretString:
+  #       SecretStringTemplate: '{"username": "iam-users"}'
+  #       GenerateStringKey: "password"
+  #       PasswordLength: 12
+  #       ExcludePunctuation: false
+  #       RequireEachIncludedType: true
 
   # ===============
   # IAM GROUPS
@@ -25,140 +25,141 @@ Resources:
     Properties:
       GroupName: "EC2FullAccessGroup"
 
-  S3Group:
-    Type: "AWS::IAM::Group"
-    Properties:
-      GroupName: "S3Group"
 
-  # ================
-  # COMMON POLICIES (Applied to ALL groups)
-  # ================
-  ChangePasswordPolicy:
-    Type: "AWS::IAM::ManagedPolicy"
-    Properties:
-      ManagedPolicyName: "ChangePasswordPolicy"
-      Groups:
-        - !Ref EC2FullAccessGroup
-        - !Ref S3Group
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: "Allow"
-            Action:
-              - "iam:ChangePassword"
-              - "iam:GetAccountPasswordPolicy"
-            Resource: "arn:aws:iam::*:user/${aws:username}"
+#   S3Group:
+#     Type: "AWS::IAM::Group"
+#     Properties:
+#       GroupName: "S3Group"
 
-  # ================
-  # SERVICE-SPECIFIC POLICIES
-  # ================
-  EC2FullAccessManagedPolicy:
-    Type: "AWS::IAM::ManagedPolicy"
-    Properties:
-      ManagedPolicyName: "EC2FullAccessPolicy"
-      Groups:
-        - !Ref EC2FullAccessGroup
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: "Allow"
-            Action:
-              - "ec2:RunInstances"
-              - "ec2:Describe*"
-              - "ec2:CreateSecurityGroup"
-              - "ec2:CreateKeyPair"
-              - "ec2:CreateTags"
-            Resource: "*"
+#   # ================
+#   # COMMON POLICIES (Applied to ALL groups)
+#   # ================
+#   ChangePasswordPolicy:
+#     Type: "AWS::IAM::ManagedPolicy"
+#     Properties:
+#       ManagedPolicyName: "ChangePasswordPolicy"
+#       Groups:
+#         - !Ref EC2FullAccessGroup
+#         - !Ref S3Group
+#       PolicyDocument:
+#         Version: "2012-10-17"
+#         Statement:
+#           - Effect: "Allow"
+#             Action:
+#               - "iam:ChangePassword"
+#               - "iam:GetAccountPasswordPolicy"
+#             Resource: "arn:aws:iam::*:user/${aws:username}"
 
-  EC2NoRunInstancesBoundary:
-    Type: "AWS::IAM::ManagedPolicy"
-    Properties:
-      ManagedPolicyName: "EC2NoRunInstancesBoundary"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Sid: "AllowIdentityPermissionsByDefault"
-            Effect: "Allow"
-            Action: 
-              - "ec2:Describe*"
-            Resource: "*"
+#   # ================
+#   # SERVICE-SPECIFIC POLICIES
+#   # ================
+#   EC2FullAccessManagedPolicy:
+#     Type: "AWS::IAM::ManagedPolicy"
+#     Properties:
+#       ManagedPolicyName: "EC2FullAccessPolicy"
+#       Groups:
+#         - !Ref EC2FullAccessGroup
+#       PolicyDocument:
+#         Version: "2012-10-17"
+#         Statement:
+#           - Effect: "Allow"
+#             Action:
+#               - "ec2:RunInstances"
+#               - "ec2:Describe*"
+#               - "ec2:CreateSecurityGroup"
+#               - "ec2:CreateKeyPair"
+#               - "ec2:CreateTags"
+#             Resource: "*"
 
-
-
-  S3ManagedPolicy:
-    Type: "AWS::IAM::ManagedPolicy"
-    Properties:
-      ManagedPolicyName: "S3GroupPolicy"
-      Groups:
-        - !Ref S3Group
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: "Allow"
-            Action:
-              - "s3:ListBucket"
-              - "s3:ListAllMyBuckets"
-            Resource: "*"
-
-  # ================
-  # IAM USERS
-  # ================
-  EC2User1:
-    Type: "AWS::IAM::User"
-    DependsOn: IAMSecretpassword
-    Properties:
-      UserName: "ec2-user1"
-      Groups:
-        - !Ref EC2FullAccessGroup
-      LoginProfile:
-        Password: "{{resolve:secretsmanager:IAMLabTemporaryPassword:SecretString:password}}"
-        PasswordResetRequired: true
-
-
-  # EC2User22:
-  #   Type: "AWS::IAM::User"
-  #   DependsOn: IAMSecretpassword
-  #   Properties:
-  #     UserName: "ec2-user22"
-  #     Groups:
-  #       - !Ref EC2FullAccessGroup
-  #     LoginProfile:
-  #       Password: "{{resolve:secretsmanager:IAMLabTemporaryPassword:SecretString:password}}"
-  #       PasswordResetRequired: true
+#   EC2NoRunInstancesBoundary:
+#     Type: "AWS::IAM::ManagedPolicy"
+#     Properties:
+#       ManagedPolicyName: "EC2NoRunInstancesBoundary"
+#       PolicyDocument:
+#         Version: "2012-10-17"
+#         Statement:
+#           - Sid: "AllowIdentityPermissionsByDefault"
+#             Effect: "Allow"
+#             Action: 
+#               - "ec2:Describe*"
+#             Resource: "*"
 
 
 
-  EC2User2:
-    Type: "AWS::IAM::User"
-    DependsOn: IAMSecretpassword
-    Properties:
-      UserName: "ec2-user2"
-      Groups:
-        - !Ref EC2FullAccessGroup
-      PermissionsBoundary: !Ref EC2NoRunInstancesBoundary
-      LoginProfile:
-        Password: "{{resolve:secretsmanager:IAMLabTemporaryPassword:SecretString:password}}"
-        PasswordResetRequired: true
+#   S3ManagedPolicy:
+#     Type: "AWS::IAM::ManagedPolicy"
+#     Properties:
+#       ManagedPolicyName: "S3GroupPolicy"
+#       Groups:
+#         - !Ref S3Group
+#       PolicyDocument:
+#         Version: "2012-10-17"
+#         Statement:
+#           - Effect: "Allow"
+#             Action:
+#               - "s3:ListBucket"
+#               - "s3:ListAllMyBuckets"
+#             Resource: "*"
+
+#   # ================
+#   # IAM USERS
+#   # ================
+#   EC2User1:
+#     Type: "AWS::IAM::User"
+#     DependsOn: IAMSecretpassword
+#     Properties:
+#       UserName: "ec2-user1"
+#       Groups:
+#         - !Ref EC2FullAccessGroup
+#       LoginProfile:
+#         Password: "{{resolve:secretsmanager:IAMLabTemporaryPassword:SecretString:password}}"
+#         PasswordResetRequired: true
 
 
-  S3User:
-    Type: "AWS::IAM::User"
-    DependsOn: IAMSecretpassword
-    Properties:
-      UserName: "s3-user"
-      Groups:
-        - !Ref S3Group
-      LoginProfile:
-        Password: "{{resolve:secretsmanager:IAMLabTemporaryPassword:SecretString:password}}"
-        PasswordResetRequired: true
+#   # EC2User22:
+#   #   Type: "AWS::IAM::User"
+#   #   DependsOn: IAMSecretpassword
+#   #   Properties:
+#   #     UserName: "ec2-user22"
+#   #     Groups:
+#   #       - !Ref EC2FullAccessGroup
+#   #     LoginProfile:
+#   #       Password: "{{resolve:secretsmanager:IAMLabTemporaryPassword:SecretString:password}}"
+#   #       PasswordResetRequired: true
 
 
-Outputs:
-  SecretArn:
-    Description: "ARN of the generated secret password"
-    Value: !Ref IAMSecretpassword
 
-  ConsoleLoginURL:
-    Description: "AWS Console sign-in URL"
-    Value: !Sub "https://${AWS::AccountId}.signin.aws.amazon.com/console"
+#   EC2User2:
+#     Type: "AWS::IAM::User"
+#     DependsOn: IAMSecretpassword
+#     Properties:
+#       UserName: "ec2-user2"
+#       Groups:
+#         - !Ref EC2FullAccessGroup
+#       PermissionsBoundary: !Ref EC2NoRunInstancesBoundary
+#       LoginProfile:
+#         Password: "{{resolve:secretsmanager:IAMLabTemporaryPassword:SecretString:password}}"
+#         PasswordResetRequired: true
+
+
+#   S3User:
+#     Type: "AWS::IAM::User"
+#     DependsOn: IAMSecretpassword
+#     Properties:
+#       UserName: "s3-user"
+#       Groups:
+#         - !Ref S3Group
+#       LoginProfile:
+#         Password: "{{resolve:secretsmanager:IAMLabTemporaryPassword:SecretString:password}}"
+#         PasswordResetRequired: true
+
+
+# Outputs:
+#   SecretArn:
+#     Description: "ARN of the generated secret password"
+#     Value: !Ref IAMSecretpassword
+
+#   ConsoleLoginURL:
+#     Description: "AWS Console sign-in URL"
+#     Value: !Sub "https://${AWS::AccountId}.signin.aws.amazon.com/console"
 
