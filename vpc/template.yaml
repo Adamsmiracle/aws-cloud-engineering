@@ -105,7 +105,7 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub "${EnvironmentName}-private-subnet-b"
-  
+
 
   # =========================================================
   # ELASTIC IPS + GATEWAYS (one per Az to prevent cross Az dependency)
@@ -277,7 +277,8 @@ Resources:
         - IpProtocol: icmp
           FromPort: -1
           ToPort: -1
-          CidrIp: 10.0.0.0/16
+          # CidrIp: 10.0.0.0/16
+          CidrIp: 0.0.0.0/0
           Description: ICMP ping from within VPC
       SecurityGroupEgress:
         - IpProtocol: "-1"
