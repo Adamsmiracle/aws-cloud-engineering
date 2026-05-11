@@ -191,6 +191,9 @@ Resources:
 
   ALB:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    DependsOn:
+      - IGWAttachment
+      - PublicRoute
     Properties:
       Name: auto-scaling-alb
       Scheme: internet-facing
