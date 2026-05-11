@@ -123,6 +123,7 @@ Resources:
 
   PrivateRoute:
     Type: AWS::EC2::Route
+    DependsOn: NatGateway
     Properties:
       RouteTableId: !Ref PrivateRouteTable
       DestinationCidrBlock: 0.0.0.0/0
@@ -143,6 +144,8 @@ Resources:
   # NAT gateway
   NatEIP:
     Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
 
 
   NatGateway:
@@ -212,6 +215,9 @@ Resources:
       Protocol: HTTP
       VpcId: !Ref VPC
       HealthCheckPath: /
+      HealthCheckIntervalSeconds: 30
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 2
   
   Listener:
     Type: AWS::ElasticLoadBalancingV2::Listener
@@ -224,6 +230,29 @@ Resources:
           TargetGroupArn: !Ref TargetGroup
 
 
+
+  EC2SSMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+
+
+
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref EC2SSMRole
+
+
   # =========================================================================
   # Launch Template
   # =========================================================================
@@ -234,6 +263,8 @@ Resources:
       LaunchTemplateData:
         ImageId: !Sub "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2}}"
         InstanceType: !Ref InstanceType
+        IamInstanceProfile:
+          Arn: !GetAtt EC2InstanceProfile.Arn
         SecurityGroupIds:
           - !Ref EC2SG
         TagSpecifications:
@@ -300,8 +331,8 @@ Resources:
       MetricName: CPUUtilization
       Statistic: Average
       Period: 60
-      EvaluationPeriods: 3 # MUST be higher than High Alarm to prevent "flapping"
-      Threshold: 0.01      # Only scale in if practically idle
+      EvaluationPeriods: 3 
+      Threshold: 10     
       ComparisonOperator: LessThanThreshold
       Dimensions:
         - Name: AutoScalingGroupName
@@ -318,7 +349,7 @@ Resources:
       Statistic: Average
       Period: 60
       EvaluationPeriods: 1 # Trigger immediately on load
-      Threshold: 1.0       # 1% is a good "sensitive" threshold for a demo
+      Threshold: 30       # 1% is a good "sensitive" threshold for a demo
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
         - Name: AutoScalingGroupName
