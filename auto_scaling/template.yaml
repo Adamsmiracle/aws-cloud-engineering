@@ -230,27 +230,24 @@ Resources:
           TargetGroupArn: !Ref TargetGroup
 
 
+  # EC2SSMRole:
+  #   Type: AWS::IAM::Role
+  #   Properties:
+  #     AssumeRolePolicyDocument:
+  #       Version: "2012-10-17"
+  #       Statement:
+  #         - Effect: Allow
+  #           Principal:
+  #             Service: ec2.amazonaws.com
+  #           Action: sts:AssumeRole
+  #     ManagedPolicyArns:
+  #       - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
 
-  EC2SSMRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ec2.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
-
-
-
-  EC2InstanceProfile:
-    Type: AWS::IAM::InstanceProfile
-    Properties:
-      Roles:
-        - !Ref EC2SSMRole
+  # EC2InstanceProfile:
+  #   Type: AWS::IAM::InstanceProfile
+  #   Properties:
+  #     Roles:
+  #       - !Ref EC2SSMRole
 
 
   # =========================================================================
@@ -267,11 +264,6 @@ Resources:
           Arn: !GetAtt EC2InstanceProfile.Arn
         SecurityGroupIds:
           - !Ref EC2SG
-        TagSpecifications:
-          - ResourceType: instance
-            Tags:
-              - Key: Name
-                Value: auto-scaling-ec2-instance
         UserData:
            Fn::Base64: |
             #!/bin/bash
@@ -348,8 +340,8 @@ Resources:
       MetricName: CPUUtilization
       Statistic: Average
       Period: 60
-      EvaluationPeriods: 1 # Trigger immediately on load
-      Threshold: 30       # 1% is a good "sensitive" threshold for a demo
+      EvaluationPeriods: 1 
+      Threshold: 30       
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
         - Name: AutoScalingGroupName
