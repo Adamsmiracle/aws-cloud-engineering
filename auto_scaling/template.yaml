@@ -258,6 +258,8 @@ Resources:
     Properties:
       LaunchTemplateName: auto-scaling-launch-template
       LaunchTemplateData:
+        Monitoring:
+          Enabled: true
         ImageId: !Sub "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2}}"
         InstanceType: !Ref InstanceType
         SecurityGroupIds:
