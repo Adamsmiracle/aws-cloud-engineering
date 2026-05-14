@@ -230,25 +230,6 @@ Resources:
           TargetGroupArn: !Ref TargetGroup
 
 
-  # EC2SSMRole:
-  #   Type: AWS::IAM::Role
-  #   Properties:
-  #     AssumeRolePolicyDocument:
-  #       Version: "2012-10-17"
-  #       Statement:
-  #         - Effect: Allow
-  #           Principal:
-  #             Service: ec2.amazonaws.com
-  #           Action: sts:AssumeRole
-  #     ManagedPolicyArns:
-  #       - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
-
-  # EC2InstanceProfile:
-  #   Type: AWS::IAM::InstanceProfile
-  #   Properties:
-  #     Roles:
-  #       - !Ref EC2SSMRole
-
 
   # =========================================================================
   # Launch Template
@@ -260,7 +241,7 @@ Resources:
       LaunchTemplateData:
         Monitoring:
           Enabled: true
-        ImageId: !Sub "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2}}"
+        ImageId: "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2}}"
         InstanceType: !Ref InstanceType
         SecurityGroupIds:
           - !Ref EC2SG
@@ -275,10 +256,10 @@ Resources:
 
             yum update -y
 
-            amazon-linux-extras enable php8.0
+            amazon-linux-extras install php8.0 -y
             yum clean metadata
 
-            yum install -y httpd php
+            yum install -y httpd
 
             systemctl start httpd
             systemctl enable httpd
@@ -379,11 +360,16 @@ Resources:
   # =========================================================================
   ASG:
     Type: AWS::AutoScaling::AutoScalingGroup
+    DependsOn:
+        - PrivateSubnet1RTAssociation
+        - PrivateSubnet2RTAssociation
     Properties:
       AutoScalingGroupName: auto-scaling-asg
       MinSize: "1"
       MaxSize: "4"
       DesiredCapacity: "1"
+      HealthCheckType: ELB
+      HealthCheckGracePeriod: 180
       VPCZoneIdentifier:
         - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
